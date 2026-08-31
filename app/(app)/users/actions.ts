@@ -2,7 +2,12 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { createUser as createUserDAL } from '@/lib/users'
+import { redirect } from 'next/navigation'
+import {
+  createUser as createUserDAL,
+  updateUser as updateUserDAL,
+  deleteUser as deleteUserDAL,
+} from '@/lib/users'
 
 const CreateUserSchema = z.object({
   email: z.email(),
@@ -32,6 +37,67 @@ export async function createUser(_prevState: CreateUserResult | undefined, formD
     await createUserDAL(parsed.data)
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Failed to create user.' }
+  }
+
+  revalidatePath('/users')
+  return { success: true }
+}
+
+const UpdateUserSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required.'),
+  email: z.email(),
+  role: z.enum(['admin', 'employee']),
+  password: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value ? value : undefined))
+    .refine((value) => value === undefined || value.length >= 8, {
+      message: 'Password must be at least 8 characters.',
+    }),
+})
+
+export interface UpdateUserResult {
+  success: boolean
+  error?: string
+}
+
+export async function updateUser(
+  id: string,
+  _prevState: UpdateUserResult | undefined,
+  formData: FormData,
+): Promise<UpdateUserResult> {
+  const parsed = UpdateUserSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+    role: formData.get('role'),
+    password: formData.get('password'),
+  })
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' }
+  }
+
+  try {
+    await updateUserDAL(id, parsed.data)
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to update user.' }
+  }
+
+  revalidatePath('/users')
+  redirect('/users')
+}
+
+export interface DeleteUserResult {
+  success: boolean
+  error?: string
+}
+
+export async function deleteUser(id: string): Promise<DeleteUserResult> {
+  try {
+    await deleteUserDAL(id)
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to delete user.' }
   }
 
   revalidatePath('/users')
