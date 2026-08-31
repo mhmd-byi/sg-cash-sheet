@@ -30,6 +30,7 @@ interface TransferFormRow {
   type: 'receive' | 'issue'
   itemId: string
   qty: number
+  unit: 'box' | 'pcs'
   remark: string
   enteredByName?: string
 }
@@ -40,13 +41,14 @@ interface StockSheetFormValues {
 }
 
 function emptyTransfer(): TransferFormRow {
-  return { type: 'receive', itemId: '', qty: 0, remark: '' }
+  return { type: 'receive', itemId: '', qty: 0, unit: 'pcs', remark: '' }
 }
 
 export function StockSheetForm({ date, detail }: { date: string; detail: StockSheetDetail }) {
   const router = useRouter()
   const itemOptions = detail.items.map((item) => ({ id: item.itemId, name: item.itemName }))
-  const expectedByItemId = new Map(detail.items.map((item) => [item.itemId, item.expectedClosingPcs]))
+  const expectedPcsByItemId = new Map(detail.items.map((item) => [item.itemId, item.expectedClosingPcs]))
+  const expectedBoxByItemId = new Map(detail.items.map((item) => [item.itemId, item.expectedClosingBox]))
 
   const form = useForm({
     defaultValues: {
@@ -66,6 +68,7 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
         type: row.type,
         itemId: row.itemId,
         qty: row.qty,
+        unit: row.unit,
         remark: row.remark,
         enteredByName: row.enteredByName,
       })),
@@ -155,16 +158,19 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
                   </>
                 )}
                 <span className="flex items-center text-sm">{item.itemName}</span>
-                <form.Field name={`items[${i}].closingBox`}>
-                  {(field) => (
-                    <Input
-                      type="number"
-                      step="1"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.valueAsNumber || 0)}
-                    />
-                  )}
-                </form.Field>
+                <div className="flex flex-col gap-0.5">
+                  <form.Field name={`items[${i}].closingBox`}>
+                    {(field) => (
+                      <Input
+                        type="number"
+                        step="1"
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.valueAsNumber || 0)}
+                      />
+                    )}
+                  </form.Field>
+                  <span className="text-xs text-muted-foreground">expected {expectedBoxByItemId.get(item.itemId) ?? 0}</span>
+                </div>
                 <div className="flex flex-col gap-0.5">
                   <form.Field name={`items[${i}].closingPcs`}>
                     {(field) => (
@@ -176,7 +182,7 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
                       />
                     )}
                   </form.Field>
-                  <span className="text-xs text-muted-foreground">expected {expectedByItemId.get(item.itemId) ?? 0}</span>
+                  <span className="text-xs text-muted-foreground">expected {expectedPcsByItemId.get(item.itemId) ?? 0}</span>
                 </div>
                 <form.Field name={`items[${i}].closingRemark`}>
                   {(field) => (
@@ -231,7 +237,7 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
             {(field) => (
               <>
                 {field.state.value.map((row: TransferFormRow, i: number) => (
-                  <div key={i} className="grid grid-cols-[7rem_10rem_5rem_1fr_8rem_auto] items-end gap-2">
+                  <div key={i} className="grid grid-cols-[7rem_10rem_5rem_6rem_1fr_8rem_auto] items-end gap-2">
                     <form.Field name={`transfers[${i}].type`}>
                       {(subField) => (
                         <Field>
@@ -278,6 +284,21 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
                             value={subField.state.value}
                             onChange={(e) => subField.handleChange(e.target.valueAsNumber || 0)}
                           />
+                        </Field>
+                      )}
+                    </form.Field>
+                    <form.Field name={`transfers[${i}].unit`}>
+                      {(subField) => (
+                        <Field>
+                          {i === 0 && <FieldLabel>Unit</FieldLabel>}
+                          <select
+                            className={selectClassName}
+                            value={subField.state.value}
+                            onChange={(e) => subField.handleChange(e.target.value as 'box' | 'pcs')}
+                          >
+                            <option value="pcs">Pcs</option>
+                            <option value="box">Box</option>
+                          </select>
                         </Field>
                       )}
                     </form.Field>

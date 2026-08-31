@@ -30,7 +30,7 @@ export function EntryForm({ items }: { items: StockItemListItem[] }) {
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[8rem_1fr_6rem_1fr]">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[8rem_1fr_6rem_6rem_1fr]">
         <Field>
           <FieldLabel htmlFor="type">Type</FieldLabel>
           <select id="type" name="type" required className={selectClassName}>
@@ -54,6 +54,13 @@ export function EntryForm({ items }: { items: StockItemListItem[] }) {
         <Field>
           <FieldLabel htmlFor="qty">Qty</FieldLabel>
           <Input id="qty" name="qty" type="number" step="1" min="1" required />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="unit">Unit</FieldLabel>
+          <select id="unit" name="unit" required className={selectClassName} defaultValue="pcs">
+            <option value="pcs">Pcs</option>
+            <option value="box">Box</option>
+          </select>
         </Field>
         <Field>
           <FieldLabel htmlFor="remark">Remark</FieldLabel>

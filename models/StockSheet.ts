@@ -17,6 +17,7 @@ export interface StockTransferRow {
   type: 'receive' | 'issue'
   itemId: mongoose.Types.ObjectId
   qty: number
+  unit: 'box' | 'pcs'
   remark: string
   enteredBy: mongoose.Types.ObjectId
 }
@@ -50,6 +51,7 @@ const TransferRowSchema = new Schema<StockTransferRow>({
   type: { type: String, enum: ['receive', 'issue'], required: true },
   itemId: { type: Schema.Types.ObjectId, ref: 'StockItem', required: true },
   qty: { type: Number, required: true, min: 0 },
+  unit: { type: String, enum: ['box', 'pcs'], required: true, default: 'pcs' },
   remark: { type: String, trim: true, default: '' },
   enteredBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
 })

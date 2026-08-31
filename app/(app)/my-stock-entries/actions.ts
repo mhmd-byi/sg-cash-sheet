@@ -8,6 +8,7 @@ const AddStockEntrySchema = z.object({
   type: z.enum(['receive', 'issue']),
   itemId: z.string().min(1, 'Item is required.'),
   qty: z.coerce.number().positive('Quantity must be greater than zero.'),
+  unit: z.enum(['box', 'pcs']),
   remark: z.string().trim().optional().default(''),
 })
 
@@ -24,6 +25,7 @@ export async function addStockEntry(
     type: formData.get('type'),
     itemId: formData.get('itemId'),
     qty: formData.get('qty'),
+    unit: formData.get('unit'),
     remark: formData.get('remark'),
   })
 

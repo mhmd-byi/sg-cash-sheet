@@ -52,6 +52,7 @@ export interface StockItemCountDTO {
   closingRemark: string
   displayPcs: number
   displayRemark: string
+  expectedClosingBox: number
   expectedClosingPcs: number
 }
 
@@ -61,6 +62,7 @@ export interface StockTransferRowDTO {
   itemId: string
   itemName: string
   qty: number
+  unit: 'box' | 'pcs'
   remark: string
   enteredByName: string
 }
@@ -88,11 +90,14 @@ export async function getStockSheetByDate(date: string): Promise<StockSheetDetai
   const storedItemsById = new Map(sheet?.items.map((row) => [row.itemId.toString(), row]) ?? [])
   const previousClosing = sheet ? null : await getPreviousStockCounts(date)
 
-  const netQtyByItem = new Map<string, number>()
+  const netBoxByItem = new Map<string, number>()
+  const netPcsByItem = new Map<string, number>()
   for (const row of sheet?.transfers ?? []) {
     const key = row.itemId.toString()
     const delta = row.type === 'receive' ? row.qty : -row.qty
-    netQtyByItem.set(key, (netQtyByItem.get(key) ?? 0) + delta)
+    const unit = row.unit ?? 'pcs'
+    const target = unit === 'box' ? netBoxByItem : netPcsByItem
+    target.set(key, (target.get(key) ?? 0) + delta)
   }
 
   const items: StockItemCountDTO[] = activeItems.map((item) => {
@@ -113,7 +118,8 @@ export async function getStockSheetByDate(date: string): Promise<StockSheetDetai
       closingRemark: stored?.closingRemark ?? '',
       displayPcs: stored?.displayPcs ?? 0,
       displayRemark: stored?.displayRemark ?? '',
-      expectedClosingPcs: openingPcs + (netQtyByItem.get(id) ?? 0),
+      expectedClosingBox: openingBox + (netBoxByItem.get(id) ?? 0),
+      expectedClosingPcs: openingPcs + (netPcsByItem.get(id) ?? 0),
     }
   })
 
@@ -123,6 +129,7 @@ export async function getStockSheetByDate(date: string): Promise<StockSheetDetai
     itemId: row.itemId.toString(),
     itemName: itemNameById.get(row.itemId.toString()) ?? 'Unknown item',
     qty: row.qty,
+    unit: row.unit ?? 'pcs',
     remark: row.remark,
     enteredByName: row.enteredBy?.name ?? 'Unknown',
   }))
@@ -147,6 +154,7 @@ export interface SaveStockTransferInput {
   type: 'receive' | 'issue'
   itemId: string
   qty: number
+  unit: 'box' | 'pcs'
   remark: string
 }
 
@@ -169,6 +177,7 @@ export async function saveStockSheet(input: SaveStockSheetInput) {
       type: row.type,
       itemId: row.itemId,
       qty: row.qty,
+      unit: row.unit,
       remark: row.remark,
       enteredBy: match ? match.enteredBy : admin.id,
     }
@@ -201,6 +210,7 @@ export interface MyStockEntryRow {
   type: 'receive' | 'issue'
   itemName: string
   qty: number
+  unit: 'box' | 'pcs'
   remark: string
 }
 
@@ -209,6 +219,7 @@ interface AggregatedStockEntry {
   type: 'receive' | 'issue'
   itemId: mongoose.Types.ObjectId
   qty: number
+  unit: 'box' | 'pcs' | undefined
   remark: string
 }
 
@@ -227,6 +238,7 @@ export async function getMyStockEntries(): Promise<MyStockEntryRow[]> {
         type: '$transfers.type',
         itemId: '$transfers.itemId',
         qty: '$transfers.qty',
+        unit: '$transfers.unit',
         remark: '$transfers.remark',
       },
     },
@@ -240,6 +252,7 @@ export async function getMyStockEntries(): Promise<MyStockEntryRow[]> {
     type: row.type,
     itemName: nameById.get(row.itemId.toString()) ?? 'Unknown item',
     qty: row.qty,
+    unit: row.unit ?? 'pcs',
     remark: row.remark,
   }))
 }
@@ -248,6 +261,7 @@ export interface AddMyStockEntryInput {
   type: 'receive' | 'issue'
   itemId: string
   qty: number
+  unit: 'box' | 'pcs'
   remark: string
 }
 
@@ -260,6 +274,7 @@ export async function addMyStockEntry(input: AddMyStockEntryInput) {
     type: input.type,
     itemId: input.itemId,
     qty: input.qty,
+    unit: input.unit,
     remark: input.remark,
     enteredBy: session.userId,
   }
