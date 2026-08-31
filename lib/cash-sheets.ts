@@ -2,7 +2,7 @@ import 'server-only'
 import mongoose from 'mongoose'
 import { verifySession, requireAdmin } from '@/lib/dal'
 import { connectDB } from '@/lib/db'
-import { getTodayDateString } from '@/lib/date'
+import { isWithinEntryWindow, ENTRY_BACKDATE_WINDOW_DAYS } from '@/lib/date'
 import { CashSheet, type CashSheetRow } from '@/models/CashSheet'
 
 export interface CashSheetListItem {
@@ -194,6 +194,7 @@ export async function getMyEntries(): Promise<MyEntryRow[]> {
 }
 
 export interface AddMyEntryInput {
+  date: string
   type: 'receipt' | 'payment'
   particular: string
   amount: number
@@ -202,9 +203,12 @@ export interface AddMyEntryInput {
 
 export async function addMyEntry(input: AddMyEntryInput) {
   const session = await verifySession()
+  if (!isWithinEntryWindow(input.date)) {
+    throw new Error(`You can only log entries within the last ${ENTRY_BACKDATE_WINDOW_DAYS} days.`)
+  }
   await connectDB()
 
-  const date = getTodayDateString()
+  const date = input.date
   const row: Omit<CashSheetRow, '_id'> = {
     particular: input.particular,
     amount: input.amount,

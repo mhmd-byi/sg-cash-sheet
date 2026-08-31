@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { addMyStockEntry } from '@/lib/stock-sheets'
 
 const AddStockEntrySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date.'),
   type: z.enum(['receive', 'issue']),
   itemId: z.string().min(1, 'Item is required.'),
   qty: z.coerce.number().positive('Quantity must be greater than zero.'),
@@ -22,6 +23,7 @@ export async function addStockEntry(
   formData: FormData,
 ): Promise<AddStockEntryResult> {
   const parsed = AddStockEntrySchema.safeParse({
+    date: formData.get('date'),
     type: formData.get('type'),
     itemId: formData.get('itemId'),
     qty: formData.get('qty'),
@@ -33,7 +35,12 @@ export async function addStockEntry(
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' }
   }
 
-  await addMyStockEntry(parsed.data)
+  try {
+    await addMyStockEntry(parsed.data)
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to add entry.' }
+  }
+
   revalidatePath('/my-stock-entries')
   revalidatePath('/stock-sheets')
   return { success: true }

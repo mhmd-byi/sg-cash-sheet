@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { addMyEntry } from '@/lib/cash-sheets'
 
 const AddEntrySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date.'),
   type: z.enum(['receipt', 'payment']),
   particular: z.string().trim().min(1, 'Particular is required.'),
   amount: z.coerce.number().positive('Amount must be greater than zero.'),
@@ -18,6 +19,7 @@ export interface AddEntryResult {
 
 export async function addEntry(_prevState: AddEntryResult | undefined, formData: FormData): Promise<AddEntryResult> {
   const parsed = AddEntrySchema.safeParse({
+    date: formData.get('date'),
     type: formData.get('type'),
     particular: formData.get('particular'),
     amount: formData.get('amount'),
@@ -28,7 +30,12 @@ export async function addEntry(_prevState: AddEntryResult | undefined, formData:
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' }
   }
 
-  await addMyEntry(parsed.data)
+  try {
+    await addMyEntry(parsed.data)
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to add entry.' }
+  }
+
   revalidatePath('/my-entries')
   revalidatePath('/cash-sheets')
   return { success: true }

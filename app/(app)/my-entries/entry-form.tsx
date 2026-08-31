@@ -7,6 +7,7 @@ import { addEntry } from './actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Field, FieldLabel } from '@/components/ui/field'
+import { getTodayDateString, getEarliestEntryDateString } from '@/lib/date'
 
 export function EntryForm() {
   const router = useRouter()
@@ -26,7 +27,19 @@ export function EntryForm() {
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[8rem_1fr_8rem_1fr]">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[9rem_8rem_1fr_8rem_1fr]">
+        <Field>
+          <FieldLabel htmlFor="date">Date</FieldLabel>
+          <Input
+            id="date"
+            name="date"
+            type="date"
+            defaultValue={getTodayDateString()}
+            min={getEarliestEntryDateString()}
+            max={getTodayDateString()}
+            required
+          />
+        </Field>
         <Field>
           <FieldLabel htmlFor="type">Type</FieldLabel>
           <select
@@ -52,6 +65,7 @@ export function EntryForm() {
           <Input id="remark" name="remark" />
         </Field>
       </div>
+      <p className="text-xs text-muted-foreground">You can log entries for today or up to 7 days back.</p>
       {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
       <Button type="submit" disabled={pending} className="self-start">
         {pending ? 'Adding…' : 'Add entry'}

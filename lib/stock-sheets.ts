@@ -2,7 +2,7 @@ import 'server-only'
 import mongoose from 'mongoose'
 import { verifySession, requireAdmin } from '@/lib/dal'
 import { connectDB } from '@/lib/db'
-import { getTodayDateString } from '@/lib/date'
+import { isWithinEntryWindow, ENTRY_BACKDATE_WINDOW_DAYS } from '@/lib/date'
 import { StockSheet, type StockTransferRow } from '@/models/StockSheet'
 import { StockItem } from '@/models/StockItem'
 
@@ -258,6 +258,7 @@ export async function getMyStockEntries(): Promise<MyStockEntryRow[]> {
 }
 
 export interface AddMyStockEntryInput {
+  date: string
   type: 'receive' | 'issue'
   itemId: string
   qty: number
@@ -267,9 +268,12 @@ export interface AddMyStockEntryInput {
 
 export async function addMyStockEntry(input: AddMyStockEntryInput) {
   const session = await verifySession()
+  if (!isWithinEntryWindow(input.date)) {
+    throw new Error(`You can only log entries within the last ${ENTRY_BACKDATE_WINDOW_DAYS} days.`)
+  }
   await connectDB()
 
-  const date = getTodayDateString()
+  const date = input.date
   const row = {
     type: input.type,
     itemId: input.itemId,
