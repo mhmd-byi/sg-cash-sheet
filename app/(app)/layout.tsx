@@ -18,10 +18,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link href="/my-entries" className="text-muted-foreground hover:text-foreground">
               My Entries
             </Link>
+            <Link href="/my-stock-entries" className="text-muted-foreground hover:text-foreground">
+              My Stock Entries
+            </Link>
             {isAdmin && (
               <>
                 <Link href="/cash-sheets" className="text-muted-foreground hover:text-foreground">
                   Cash Sheets
+                </Link>
+                <Link href="/stock-sheets" className="text-muted-foreground hover:text-foreground">
+                  Stock Sheets
+                </Link>
+                <Link href="/stock-items" className="text-muted-foreground hover:text-foreground">
+                  Stock Items
                 </Link>
                 <Link href="/users" className="text-muted-foreground hover:text-foreground">
                   Users
