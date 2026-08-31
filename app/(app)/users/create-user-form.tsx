@@ -26,10 +26,14 @@ export function CreateUserForm() {
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
         <Field>
           <FieldLabel htmlFor="name">Name</FieldLabel>
           <Input id="name" name="name" required />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="username">Username</FieldLabel>
+          <Input id="username" name="username" required minLength={3} />
         </Field>
         <Field>
           <FieldLabel htmlFor="email">Email</FieldLabel>

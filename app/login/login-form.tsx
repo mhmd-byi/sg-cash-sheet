@@ -13,8 +13,8 @@ export function LoginForm() {
     <form action={formAction}>
       <FieldGroup>
         <Field>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <Input id="email" name="email" type="email" autoComplete="email" required />
+          <FieldLabel htmlFor="identifier">Email or Username</FieldLabel>
+          <Input id="identifier" name="identifier" type="text" autoComplete="username" required />
         </Field>
         <Field>
           <FieldLabel htmlFor="password">Password</FieldLabel>

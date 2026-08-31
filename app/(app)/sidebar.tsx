@@ -59,7 +59,7 @@ function SidebarContent({
       </nav>
       <div className="border-t p-3">
         <form action={logout}>
-          <Button type="submit" variant="outline" size="sm" className="w-full">
+          <Button type="submit" variant="destructive" size="sm" className="w-full">
             Log out
           </Button>
         </form>

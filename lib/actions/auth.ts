@@ -8,7 +8,7 @@ import { User } from '@/models/User'
 import { createSession, deleteSession } from '@/lib/session'
 
 const LoginSchema = z.object({
-  email: z.email(),
+  identifier: z.string().trim().min(1),
   password: z.string().min(1),
 })
 
@@ -16,11 +16,11 @@ export interface LoginState {
   error?: string
 }
 
-const INVALID_CREDENTIALS_ERROR = 'Invalid email or password.'
+const INVALID_CREDENTIALS_ERROR = 'Invalid email/username or password.'
 
 export async function login(_prevState: LoginState | undefined, formData: FormData): Promise<LoginState> {
   const parsed = LoginSchema.safeParse({
-    email: formData.get('email'),
+    identifier: formData.get('identifier'),
     password: formData.get('password'),
   })
 
@@ -29,7 +29,8 @@ export async function login(_prevState: LoginState | undefined, formData: FormDa
   }
 
   await connectDB()
-  const user = await User.findOne({ email: parsed.data.email.toLowerCase().trim() })
+  const identifier = parsed.data.identifier.toLowerCase().trim()
+  const user = await User.findOne({ $or: [{ email: identifier }, { username: identifier }] })
   if (!user) {
     return { error: INVALID_CREDENTIALS_ERROR }
   }

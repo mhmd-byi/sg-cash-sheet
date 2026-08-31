@@ -9,8 +9,15 @@ import {
   deleteUser as deleteUserDAL,
 } from '@/lib/users'
 
+const UsernameSchema = z
+  .string()
+  .trim()
+  .min(3, 'Username must be at least 3 characters.')
+  .regex(/^[a-zA-Z0-9_.-]+$/, 'Username can only contain letters, numbers, dots, dashes and underscores.')
+
 const CreateUserSchema = z.object({
   email: z.email(),
+  username: UsernameSchema,
   password: z.string().min(8, 'Password must be at least 8 characters.'),
   name: z.string().trim().min(1, 'Name is required.'),
   role: z.enum(['admin', 'employee']),
@@ -24,6 +31,7 @@ export interface CreateUserResult {
 export async function createUser(_prevState: CreateUserResult | undefined, formData: FormData): Promise<CreateUserResult> {
   const parsed = CreateUserSchema.safeParse({
     email: formData.get('email'),
+    username: formData.get('username'),
     password: formData.get('password'),
     name: formData.get('name'),
     role: formData.get('role'),
@@ -45,6 +53,7 @@ export async function createUser(_prevState: CreateUserResult | undefined, formD
 
 const UpdateUserSchema = z.object({
   name: z.string().trim().min(1, 'Name is required.'),
+  username: UsernameSchema,
   email: z.email(),
   role: z.enum(['admin', 'employee']),
   password: z
@@ -69,6 +78,7 @@ export async function updateUser(
 ): Promise<UpdateUserResult> {
   const parsed = UpdateUserSchema.safeParse({
     name: formData.get('name'),
+    username: formData.get('username'),
     email: formData.get('email'),
     role: formData.get('role'),
     password: formData.get('password'),

@@ -18,6 +18,10 @@ export function EditUserForm({ user }: { user: UserDetail }) {
         <Input id="name" name="name" defaultValue={user.name} required />
       </Field>
       <Field>
+        <FieldLabel htmlFor="username">Username</FieldLabel>
+        <Input id="username" name="username" defaultValue={user.username} required minLength={3} />
+      </Field>
+      <Field>
         <FieldLabel htmlFor="email">Email</FieldLabel>
         <Input id="email" name="email" type="email" defaultValue={user.email} required />
       </Field>

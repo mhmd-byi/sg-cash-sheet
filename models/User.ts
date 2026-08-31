@@ -3,6 +3,7 @@ import mongoose, { Schema, type InferSchemaType } from 'mongoose'
 const UserSchema = new Schema(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    username: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
     name: { type: String, required: true, trim: true },
     role: { type: String, enum: ['admin', 'employee'], required: true, default: 'employee' },

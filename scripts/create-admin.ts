@@ -3,10 +3,10 @@ import bcrypt from 'bcryptjs'
 import { User } from '../models/User.ts'
 
 async function main() {
-  const [email, password, name] = process.argv.slice(2)
+  const [email, username, password, name] = process.argv.slice(2)
 
-  if (!email || !password || !name) {
-    console.error('Usage: node --env-file=.env.local scripts/create-admin.ts <email> <password> <name>')
+  if (!email || !username || !password || !name) {
+    console.error('Usage: node --env-file=.env.local scripts/create-admin.ts <email> <username> <password> <name>')
     process.exit(1)
   }
 
@@ -20,11 +20,11 @@ async function main() {
 
   const user = await User.findOneAndUpdate(
     { email: email.toLowerCase().trim() },
-    { $set: { passwordHash, name, role: 'admin' } },
+    { $set: { username: username.toLowerCase().trim(), passwordHash, name, role: 'admin' } },
     { upsert: true, returnDocument: 'after', runValidators: true },
   )
 
-  console.log(`Admin saved: ${user.email} (${user.name})`)
+  console.log(`Admin saved: ${user.email} / ${user.username} (${user.name})`)
   process.exit(0)
 }
 

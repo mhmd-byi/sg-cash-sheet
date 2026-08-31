@@ -25,6 +25,7 @@ export default async function UsersPage() {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
+            <TableHead>Username</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Actions</TableHead>
@@ -34,6 +35,7 @@ export default async function UsersPage() {
           {users.map((user) => (
             <TableRow key={user.id}>
               <TableCell>{user.name}</TableCell>
+              <TableCell>{user.username}</TableCell>
               <TableCell>{user.email}</TableCell>
               <TableCell className="capitalize">{user.role}</TableCell>
               <TableCell>
