@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { saveStockSheet } from '../actions'
+import { NumberFieldInput } from '@/app/(app)/number-field-input'
 import type { StockSheetDetail } from '@/lib/stock-sheets'
 
 const selectClassName =
@@ -115,24 +116,10 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
                 )}
                 <span className="flex items-center text-sm">{item.itemName}</span>
                 <form.Field name={`items[${i}].openingBox`}>
-                  {(field) => (
-                    <Input
-                      type="number"
-                      step="1"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.valueAsNumber || 0)}
-                    />
-                  )}
+                  {(field) => <NumberFieldInput value={field.state.value} onChange={field.handleChange} />}
                 </form.Field>
                 <form.Field name={`items[${i}].openingPcs`}>
-                  {(field) => (
-                    <Input
-                      type="number"
-                      step="1"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.valueAsNumber || 0)}
-                    />
-                  )}
+                  {(field) => <NumberFieldInput value={field.state.value} onChange={field.handleChange} />}
                 </form.Field>
                 <form.Field name={`items[${i}].openingRemark`}>
                   {(field) => (
@@ -162,27 +149,13 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
                 <span className="flex items-center text-sm">{item.itemName}</span>
                 <div className="flex flex-col gap-0.5">
                   <form.Field name={`items[${i}].closingBox`}>
-                    {(field) => (
-                      <Input
-                        type="number"
-                        step="1"
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.valueAsNumber || 0)}
-                      />
-                    )}
+                    {(field) => <NumberFieldInput value={field.state.value} onChange={field.handleChange} />}
                   </form.Field>
                   <span className="text-xs text-muted-foreground">expected {expectedBoxByItemId.get(item.itemId) ?? 0}</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <form.Field name={`items[${i}].closingPcs`}>
-                    {(field) => (
-                      <Input
-                        type="number"
-                        step="1"
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.valueAsNumber || 0)}
-                      />
-                    )}
+                    {(field) => <NumberFieldInput value={field.state.value} onChange={field.handleChange} />}
                   </form.Field>
                   <span className="text-xs text-muted-foreground">expected {expectedPcsByItemId.get(item.itemId) ?? 0}</span>
                 </div>
@@ -213,14 +186,7 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
               )}
               <span className="flex items-center text-sm">{item.itemName}</span>
               <form.Field name={`items[${i}].displayPcs`}>
-                {(field) => (
-                  <Input
-                    type="number"
-                    step="1"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.valueAsNumber || 0)}
-                  />
-                )}
+                {(field) => <NumberFieldInput value={field.state.value} onChange={field.handleChange} />}
               </form.Field>
               <form.Field name={`items[${i}].displayRemark`}>
                 {(field) => <Input value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} />}
@@ -288,12 +254,7 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
                       {(subField) => (
                         <Field>
                           {i === 0 && <FieldLabel>Qty</FieldLabel>}
-                          <Input
-                            type="number"
-                            step="1"
-                            value={subField.state.value}
-                            onChange={(e) => subField.handleChange(e.target.valueAsNumber || 0)}
-                          />
+                          <NumberFieldInput value={subField.state.value} onChange={subField.handleChange} />
                         </Field>
                       )}
                     </form.Field>

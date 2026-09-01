@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { formatINR } from '@/lib/currency'
 import { saveCashSheet } from '../actions'
+import { NumberFieldInput } from '@/app/(app)/number-field-input'
 import type { CashSheetDetail, CashSheetRowDTO } from '@/lib/cash-sheets'
 
 type FormRow = Omit<CashSheetRowDTO, 'id' | 'enteredByName'> & Partial<Pick<CashSheetRowDTO, 'id' | 'enteredByName'>>
@@ -75,12 +76,7 @@ export function CashSheetForm({
                       {(subField) => (
                         <Field>
                           {i === 0 && <FieldLabel>Amount</FieldLabel>}
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={subField.state.value}
-                            onChange={(e) => subField.handleChange(e.target.valueAsNumber || 0)}
-                          />
+                          <NumberFieldInput step="0.01" value={subField.state.value} onChange={subField.handleChange} />
                         </Field>
                       )}
                     </form.Field>
@@ -135,13 +131,12 @@ export function CashSheetForm({
           {(field) => (
             <Field orientation="horizontal" className="w-auto items-center">
               <FieldLabel htmlFor="openingBalance">Opening Balance (₹)</FieldLabel>
-              <Input
+              <NumberFieldInput
                 id="openingBalance"
-                type="number"
                 step="0.01"
                 className="w-40"
                 value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.valueAsNumber || 0)}
+                onChange={field.handleChange}
               />
             </Field>
           )}
