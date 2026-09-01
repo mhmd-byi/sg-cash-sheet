@@ -63,7 +63,7 @@ export interface StockTransferRowDTO {
   itemName: string
   particulars: string
   qty: number
-  unit: 'box' | 'pcs'
+  unit: 'box' | 'pcs' | 'grams'
   remark: string
   enteredByName: string
 }
@@ -97,8 +97,10 @@ export async function getStockSheetByDate(date: string): Promise<StockSheetDetai
     const key = row.itemId.toString()
     const delta = row.type === 'receive' ? row.qty : -row.qty
     const unit = row.unit ?? 'pcs'
-    const target = unit === 'box' ? netBoxByItem : netPcsByItem
-    target.set(key, (target.get(key) ?? 0) + delta)
+    // Grams-denominated transfers have no closing-count field to reconcile against
+    // (only Box and Pcs are tracked on the stock count table), so they're excluded here.
+    if (unit === 'box') netBoxByItem.set(key, (netBoxByItem.get(key) ?? 0) + delta)
+    else if (unit === 'pcs') netPcsByItem.set(key, (netPcsByItem.get(key) ?? 0) + delta)
   }
 
   const items: StockItemCountDTO[] = activeItems.map((item) => {
@@ -157,7 +159,7 @@ export interface SaveStockTransferInput {
   itemId: string
   particulars: string
   qty: number
-  unit: 'box' | 'pcs'
+  unit: 'box' | 'pcs' | 'grams'
   remark: string
 }
 
@@ -215,7 +217,7 @@ export interface MyStockEntryRow {
   itemName: string
   particulars: string
   qty: number
-  unit: 'box' | 'pcs'
+  unit: 'box' | 'pcs' | 'grams'
   remark: string
 }
 
@@ -225,7 +227,7 @@ interface AggregatedStockEntry {
   itemId: mongoose.Types.ObjectId
   particulars: string | undefined
   qty: number
-  unit: 'box' | 'pcs' | undefined
+  unit: 'box' | 'pcs' | 'grams' | undefined
   remark: string
 }
 
@@ -271,7 +273,7 @@ export interface AddMyStockEntryInput {
   itemId: string
   particulars: string
   qty: number
-  unit: 'box' | 'pcs'
+  unit: 'box' | 'pcs' | 'grams'
   remark: string
 }
 

@@ -77,6 +77,7 @@ export function EntryForm({ items }: { items: StockItemListItem[] }) {
           <select id="unit" name="unit" required className={selectClassName} defaultValue="pcs">
             <option value="pcs">Pcs</option>
             <option value="box">Box</option>
+            <option value="grams">Grams</option>
           </select>
         </Field>
         <Field>

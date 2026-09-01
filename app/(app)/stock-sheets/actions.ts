@@ -22,7 +22,7 @@ const TransferSchema = z.object({
   itemId: z.string().min(1, 'Item is required.'),
   particulars: z.string().trim().optional().default(''),
   qty: z.coerce.number().min(0),
-  unit: z.enum(['box', 'pcs']),
+  unit: z.enum(['box', 'pcs', 'grams']),
   remark: z.string().trim().optional().default(''),
 })
 

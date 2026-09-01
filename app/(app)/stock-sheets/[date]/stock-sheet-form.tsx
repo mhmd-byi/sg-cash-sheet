@@ -31,7 +31,7 @@ interface TransferFormRow {
   itemId: string
   particulars: string
   qty: number
-  unit: 'box' | 'pcs'
+  unit: 'box' | 'pcs' | 'grams'
   remark: string
   enteredByName?: string
 }
@@ -304,10 +304,11 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
                           <select
                             className={selectClassName}
                             value={subField.state.value}
-                            onChange={(e) => subField.handleChange(e.target.value as 'box' | 'pcs')}
+                            onChange={(e) => subField.handleChange(e.target.value as 'box' | 'pcs' | 'grams')}
                           >
                             <option value="pcs">Pcs</option>
                             <option value="box">Box</option>
+                            <option value="grams">Grams</option>
                           </select>
                         </Field>
                       )}

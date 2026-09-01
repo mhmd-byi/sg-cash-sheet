@@ -10,7 +10,7 @@ const AddStockEntrySchema = z.object({
   itemId: z.string().min(1, 'Item is required.'),
   particulars: z.string().trim().optional().default(''),
   qty: z.coerce.number().positive('Quantity must be greater than zero.'),
-  unit: z.enum(['box', 'pcs']),
+  unit: z.enum(['box', 'pcs', 'grams']),
   remark: z.string().trim().optional().default(''),
 })
 
