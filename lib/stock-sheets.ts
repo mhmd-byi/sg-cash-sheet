@@ -61,6 +61,7 @@ export interface StockTransferRowDTO {
   type: 'receive' | 'issue'
   itemId: string
   itemName: string
+  particulars: string
   qty: number
   unit: 'box' | 'pcs'
   remark: string
@@ -128,6 +129,7 @@ export async function getStockSheetByDate(date: string): Promise<StockSheetDetai
     type: row.type,
     itemId: row.itemId.toString(),
     itemName: itemNameById.get(row.itemId.toString()) ?? 'Unknown item',
+    particulars: row.particulars ?? '',
     qty: row.qty,
     unit: row.unit ?? 'pcs',
     remark: row.remark,
@@ -153,6 +155,7 @@ export interface SaveStockTransferInput {
   id?: string
   type: 'receive' | 'issue'
   itemId: string
+  particulars: string
   qty: number
   unit: 'box' | 'pcs'
   remark: string
@@ -176,6 +179,7 @@ export async function saveStockSheet(input: SaveStockSheetInput) {
     return {
       type: row.type,
       itemId: row.itemId,
+      particulars: row.particulars,
       qty: row.qty,
       unit: row.unit,
       remark: row.remark,
@@ -209,6 +213,7 @@ export interface MyStockEntryRow {
   date: string
   type: 'receive' | 'issue'
   itemName: string
+  particulars: string
   qty: number
   unit: 'box' | 'pcs'
   remark: string
@@ -218,6 +223,7 @@ interface AggregatedStockEntry {
   date: string
   type: 'receive' | 'issue'
   itemId: mongoose.Types.ObjectId
+  particulars: string | undefined
   qty: number
   unit: 'box' | 'pcs' | undefined
   remark: string
@@ -237,6 +243,7 @@ export async function getMyStockEntries(): Promise<MyStockEntryRow[]> {
         date: 1,
         type: '$transfers.type',
         itemId: '$transfers.itemId',
+        particulars: '$transfers.particulars',
         qty: '$transfers.qty',
         unit: '$transfers.unit',
         remark: '$transfers.remark',
@@ -251,6 +258,7 @@ export async function getMyStockEntries(): Promise<MyStockEntryRow[]> {
     date: row.date,
     type: row.type,
     itemName: nameById.get(row.itemId.toString()) ?? 'Unknown item',
+    particulars: row.particulars ?? '',
     qty: row.qty,
     unit: row.unit ?? 'pcs',
     remark: row.remark,
@@ -261,6 +269,7 @@ export interface AddMyStockEntryInput {
   date: string
   type: 'receive' | 'issue'
   itemId: string
+  particulars: string
   qty: number
   unit: 'box' | 'pcs'
   remark: string
@@ -277,6 +286,7 @@ export async function addMyStockEntry(input: AddMyStockEntryInput) {
   const row = {
     type: input.type,
     itemId: input.itemId,
+    particulars: input.particulars,
     qty: input.qty,
     unit: input.unit,
     remark: input.remark,

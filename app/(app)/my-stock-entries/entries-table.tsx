@@ -13,6 +13,7 @@ export function EntriesTable({ data }: { data: MyStockEntryRow[] }) {
           <TableHead>Date</TableHead>
           <TableHead>Type</TableHead>
           <TableHead>Item</TableHead>
+          <TableHead>Particulars</TableHead>
           <TableHead>Qty</TableHead>
           <TableHead>Unit</TableHead>
           <TableHead>Remark</TableHead>
@@ -24,6 +25,7 @@ export function EntriesTable({ data }: { data: MyStockEntryRow[] }) {
             <TableCell>{entry.date}</TableCell>
             <TableCell className="capitalize">{entry.type}</TableCell>
             <TableCell>{entry.itemName}</TableCell>
+            <TableCell>{entry.particulars}</TableCell>
             <TableCell>{entry.qty}</TableCell>
             <TableCell className="capitalize">{entry.unit}</TableCell>
             <TableCell>{entry.remark}</TableCell>

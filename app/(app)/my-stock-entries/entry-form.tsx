@@ -31,7 +31,7 @@ export function EntryForm({ items }: { items: StockItemListItem[] }) {
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[9rem_8rem_1fr_6rem_6rem_1fr]">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[9rem_8rem_1fr_1fr_6rem_6rem_1fr]">
         <Field>
           <FieldLabel htmlFor="date">Date</FieldLabel>
           <Input
@@ -63,6 +63,10 @@ export function EntryForm({ items }: { items: StockItemListItem[] }) {
               </option>
             ))}
           </select>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="particulars">Particulars</FieldLabel>
+          <Input id="particulars" name="particulars" />
         </Field>
         <Field>
           <FieldLabel htmlFor="qty">Qty</FieldLabel>

@@ -29,6 +29,7 @@ interface TransferFormRow {
   id?: string
   type: 'receive' | 'issue'
   itemId: string
+  particulars: string
   qty: number
   unit: 'box' | 'pcs'
   remark: string
@@ -41,7 +42,7 @@ interface StockSheetFormValues {
 }
 
 function emptyTransfer(): TransferFormRow {
-  return { type: 'receive', itemId: '', qty: 0, unit: 'pcs', remark: '' }
+  return { type: 'receive', itemId: '', particulars: '', qty: 0, unit: 'pcs', remark: '' }
 }
 
 export function StockSheetForm({ date, detail }: { date: string; detail: StockSheetDetail }) {
@@ -67,6 +68,7 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
         id: row.id,
         type: row.type,
         itemId: row.itemId,
+        particulars: row.particulars,
         qty: row.qty,
         unit: row.unit,
         remark: row.remark,
@@ -237,7 +239,7 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
             {(field) => (
               <>
                 {field.state.value.map((row: TransferFormRow, i: number) => (
-                  <div key={i} className="grid grid-cols-[7rem_10rem_5rem_6rem_1fr_8rem_auto] items-end gap-2">
+                  <div key={i} className="grid grid-cols-[7rem_10rem_1fr_5rem_6rem_1fr_8rem_auto] items-end gap-2">
                     <form.Field name={`transfers[${i}].type`}>
                       {(subField) => (
                         <Field>
@@ -271,6 +273,14 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
                               </option>
                             ))}
                           </select>
+                        </Field>
+                      )}
+                    </form.Field>
+                    <form.Field name={`transfers[${i}].particulars`}>
+                      {(subField) => (
+                        <Field>
+                          {i === 0 && <FieldLabel>Particulars</FieldLabel>}
+                          <Input value={subField.state.value} onChange={(e) => subField.handleChange(e.target.value)} />
                         </Field>
                       )}
                     </form.Field>
