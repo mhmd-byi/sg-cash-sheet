@@ -46,7 +46,15 @@ function emptyTransfer(): TransferFormRow {
   return { type: 'receive', itemId: '', particulars: '', qty: 0, unit: 'pcs', remark: '' }
 }
 
-export function StockSheetForm({ date, detail }: { date: string; detail: StockSheetDetail }) {
+export function StockSheetForm({
+  date,
+  detail,
+  particularSuggestions,
+}: {
+  date: string
+  detail: StockSheetDetail
+  particularSuggestions: string[]
+}) {
   const router = useRouter()
   const itemOptions = detail.items.map((item) => ({ id: item.itemId, name: item.itemName }))
   const expectedPcsByItemId = new Map(detail.items.map((item) => [item.itemId, item.expectedClosingPcs]))
@@ -96,6 +104,11 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
       }}
       className="flex flex-1 flex-col gap-4"
     >
+      <datalist id="particular-suggestions">
+        {particularSuggestions.map((value) => (
+          <option key={value} value={value} />
+        ))}
+      </datalist>
       <h1 className="font-heading text-lg font-medium">{date}</h1>
 
       <div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2">
@@ -246,7 +259,11 @@ export function StockSheetForm({ date, detail }: { date: string; detail: StockSh
                       {(subField) => (
                         <Field>
                           {i === 0 && <FieldLabel>Particulars</FieldLabel>}
-                          <Input value={subField.state.value} onChange={(e) => subField.handleChange(e.target.value)} />
+                          <Input
+                            list="particular-suggestions"
+                            value={subField.state.value}
+                            onChange={(e) => subField.handleChange(e.target.value)}
+                          />
                         </Field>
                       )}
                     </form.Field>

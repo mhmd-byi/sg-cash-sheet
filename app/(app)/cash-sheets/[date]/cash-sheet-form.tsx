@@ -28,10 +28,12 @@ export function CashSheetForm({
   date,
   initialData,
   defaultOpeningBalance,
+  particularSuggestions,
 }: {
   date: string
   initialData: CashSheetDetail | null
   defaultOpeningBalance: number
+  particularSuggestions: string[]
 }) {
   const router = useRouter()
 
@@ -68,7 +70,11 @@ export function CashSheetForm({
                       {(subField) => (
                         <Field>
                           {i === 0 && <FieldLabel>Particular</FieldLabel>}
-                          <Input value={subField.state.value} onChange={(e) => subField.handleChange(e.target.value)} />
+                          <Input
+                            list="particular-suggestions"
+                            value={subField.state.value}
+                            onChange={(e) => subField.handleChange(e.target.value)}
+                          />
                         </Field>
                       )}
                     </form.Field>
@@ -125,6 +131,11 @@ export function CashSheetForm({
       }}
       className="flex flex-1 flex-col gap-4"
     >
+      <datalist id="particular-suggestions">
+        {particularSuggestions.map((value) => (
+          <option key={value} value={value} />
+        ))}
+      </datalist>
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-lg font-medium">{date}</h1>
         <form.Field name="openingBalance">

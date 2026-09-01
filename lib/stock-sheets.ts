@@ -305,3 +305,12 @@ export async function addMyStockEntry(input: AddMyStockEntryInput) {
     { upsert: true, runValidators: true },
   )
 }
+
+export async function getDistinctParticulars(): Promise<string[]> {
+  await verifySession()
+  await connectDB()
+
+  const values = await StockSheet.distinct('transfers.particulars')
+  const unique = new Set(values.filter((value): value is string => Boolean(value)))
+  return [...unique].sort((a, b) => a.localeCompare(b))
+}

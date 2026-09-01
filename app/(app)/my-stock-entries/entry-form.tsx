@@ -13,7 +13,13 @@ import { getTodayDateString, getEarliestEntryDateString } from '@/lib/date'
 const selectClassName =
   'h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
 
-export function EntryForm({ items }: { items: StockItemListItem[] }) {
+export function EntryForm({
+  items,
+  particularSuggestions,
+}: {
+  items: StockItemListItem[]
+  particularSuggestions: string[]
+}) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -31,6 +37,11 @@ export function EntryForm({ items }: { items: StockItemListItem[] }) {
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-3">
+      <datalist id="particular-suggestions">
+        {particularSuggestions.map((value) => (
+          <option key={value} value={value} />
+        ))}
+      </datalist>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[9rem_8rem_1fr_1fr_6rem_6rem_1fr]">
         <Field>
           <FieldLabel htmlFor="date">Date</FieldLabel>
@@ -66,7 +77,7 @@ export function EntryForm({ items }: { items: StockItemListItem[] }) {
         </Field>
         <Field>
           <FieldLabel htmlFor="particulars">Particulars</FieldLabel>
-          <Input id="particulars" name="particulars" />
+          <Input id="particulars" name="particulars" list="particular-suggestions" />
         </Field>
         <Field>
           <FieldLabel htmlFor="qty">Qty</FieldLabel>

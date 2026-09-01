@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getCashSheetByDate, getPreviousClosingBalance } from '@/lib/cash-sheets'
+import { getCashSheetByDate, getPreviousClosingBalance, getDistinctParticulars } from '@/lib/cash-sheets'
 import { isValidDateString } from '@/lib/date'
 import { CashSheetForm } from './cash-sheet-form'
 
@@ -10,8 +10,15 @@ export default async function CashSheetPage({ params }: { params: Promise<{ date
     notFound()
   }
 
-  const existing = await getCashSheetByDate(date)
+  const [existing, particularSuggestions] = await Promise.all([getCashSheetByDate(date), getDistinctParticulars()])
   const openingBalance = existing ? existing.openingBalance : (await getPreviousClosingBalance(date)) ?? 0
 
-  return <CashSheetForm date={date} initialData={existing} defaultOpeningBalance={openingBalance} />
+  return (
+    <CashSheetForm
+      date={date}
+      initialData={existing}
+      defaultOpeningBalance={openingBalance}
+      particularSuggestions={particularSuggestions}
+    />
+  )
 }

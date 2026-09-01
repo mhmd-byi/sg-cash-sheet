@@ -229,3 +229,16 @@ export async function addMyEntry(input: AddMyEntryInput) {
     { upsert: true, runValidators: true },
   )
 }
+
+export async function getDistinctParticulars(): Promise<string[]> {
+  await verifySession()
+  await connectDB()
+
+  const [receiptValues, paymentValues] = await Promise.all([
+    CashSheet.distinct('receipts.particular'),
+    CashSheet.distinct('payments.particular'),
+  ])
+
+  const unique = new Set([...receiptValues, ...paymentValues].filter((value): value is string => Boolean(value)))
+  return [...unique].sort((a, b) => a.localeCompare(b))
+}

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getStockSheetByDate } from '@/lib/stock-sheets'
+import { getStockSheetByDate, getDistinctParticulars } from '@/lib/stock-sheets'
 import { isValidDateString } from '@/lib/date'
 import { StockSheetForm } from './stock-sheet-form'
 
@@ -10,7 +10,7 @@ export default async function StockSheetPage({ params }: { params: Promise<{ dat
     notFound()
   }
 
-  const detail = await getStockSheetByDate(date)
+  const [detail, particularSuggestions] = await Promise.all([getStockSheetByDate(date), getDistinctParticulars()])
 
-  return <StockSheetForm date={date} detail={detail} />
+  return <StockSheetForm date={date} detail={detail} particularSuggestions={particularSuggestions} />
 }

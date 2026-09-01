@@ -1,11 +1,15 @@
-import { getMyStockEntries } from '@/lib/stock-sheets'
+import { getMyStockEntries, getDistinctParticulars } from '@/lib/stock-sheets'
 import { getStockItemsList } from '@/lib/stock-items'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { EntryForm } from './entry-form'
 import { EntriesTable } from './entries-table'
 
 export default async function MyStockEntriesPage() {
-  const [entries, items] = await Promise.all([getMyStockEntries(), getStockItemsList()])
+  const [entries, items, particularSuggestions] = await Promise.all([
+    getMyStockEntries(),
+    getStockItemsList(),
+    getDistinctParticulars(),
+  ])
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -15,7 +19,7 @@ export default async function MyStockEntriesPage() {
           <CardTitle>Log a receive or issue for today</CardTitle>
         </CardHeader>
         <CardContent>
-          <EntryForm items={items} />
+          <EntryForm items={items} particularSuggestions={particularSuggestions} />
         </CardContent>
       </Card>
       <EntriesTable data={entries} />

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { getTodayDateString, getEarliestEntryDateString } from '@/lib/date'
 
-export function EntryForm() {
+export function EntryForm({ particularSuggestions }: { particularSuggestions: string[] }) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -27,6 +27,11 @@ export function EntryForm() {
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-3">
+      <datalist id="particular-suggestions">
+        {particularSuggestions.map((value) => (
+          <option key={value} value={value} />
+        ))}
+      </datalist>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[9rem_8rem_1fr_8rem_1fr]">
         <Field>
           <FieldLabel htmlFor="date">Date</FieldLabel>
@@ -54,7 +59,7 @@ export function EntryForm() {
         </Field>
         <Field>
           <FieldLabel htmlFor="particular">Particular</FieldLabel>
-          <Input id="particular" name="particular" required />
+          <Input id="particular" name="particular" list="particular-suggestions" required />
         </Field>
         <Field>
           <FieldLabel htmlFor="amount">Amount (₹)</FieldLabel>

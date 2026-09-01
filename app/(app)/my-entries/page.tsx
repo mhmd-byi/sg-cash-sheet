@@ -1,10 +1,10 @@
-import { getMyEntries } from '@/lib/cash-sheets'
+import { getMyEntries, getDistinctParticulars } from '@/lib/cash-sheets'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { EntryForm } from './entry-form'
 import { EntriesTable } from './entries-table'
 
 export default async function MyEntriesPage() {
-  const entries = await getMyEntries()
+  const [entries, particularSuggestions] = await Promise.all([getMyEntries(), getDistinctParticulars()])
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -14,7 +14,7 @@ export default async function MyEntriesPage() {
           <CardTitle>Add an entry for today</CardTitle>
         </CardHeader>
         <CardContent>
-          <EntryForm />
+          <EntryForm particularSuggestions={particularSuggestions} />
         </CardContent>
       </Card>
       <EntriesTable data={entries} />
