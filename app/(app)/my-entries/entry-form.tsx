@@ -12,12 +12,14 @@ import { getTodayDateString, getEarliestEntryDateString } from '@/lib/date'
 export function EntryForm({ particularSuggestions }: { particularSuggestions: string[] }) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
+  const particularRef = useRef<HTMLInputElement>(null)
 
   const [state, formAction, pending] = useActionState(async (_prevState: unknown, formData: FormData) => {
     const result = await addEntry(undefined, formData)
     if (result.success) {
       toast.success('Entry added.')
       formRef.current?.reset()
+      particularRef.current?.focus()
       router.refresh()
     } else {
       toast.error(result.error ?? 'Failed to add entry.')
@@ -59,7 +61,7 @@ export function EntryForm({ particularSuggestions }: { particularSuggestions: st
         </Field>
         <Field>
           <FieldLabel htmlFor="particular">Particular</FieldLabel>
-          <Input id="particular" name="particular" list="particular-suggestions" required />
+          <Input id="particular" name="particular" list="particular-suggestions" ref={particularRef} autoFocus required />
         </Field>
         <Field>
           <FieldLabel htmlFor="amount">Amount (₹)</FieldLabel>

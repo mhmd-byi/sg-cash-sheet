@@ -22,12 +22,14 @@ export function EntryForm({
 }) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
+  const particularsRef = useRef<HTMLInputElement>(null)
 
   const [state, formAction, pending] = useActionState(async (_prevState: unknown, formData: FormData) => {
     const result = await addStockEntry(undefined, formData)
     if (result.success) {
       toast.success('Entry added.')
       formRef.current?.reset()
+      particularsRef.current?.focus()
       router.refresh()
     } else {
       toast.error(result.error ?? 'Failed to add entry.')
@@ -77,7 +79,13 @@ export function EntryForm({
         </Field>
         <Field>
           <FieldLabel htmlFor="particulars">Particulars</FieldLabel>
-          <Input id="particulars" name="particulars" list="particular-suggestions" />
+          <Input
+            id="particulars"
+            name="particulars"
+            list="particular-suggestions"
+            ref={particularsRef}
+            autoFocus
+          />
         </Field>
         <Field>
           <FieldLabel htmlFor="qty">Qty</FieldLabel>
