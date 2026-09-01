@@ -57,7 +57,14 @@ function SidebarContent({
           </Link>
         ))}
       </nav>
-      <div className="border-t p-3">
+      <div className="flex flex-col gap-2 border-t p-3">
+        <Link
+          href="/shortcuts"
+          onClick={onNavigate}
+          className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+        >
+          ⌨ Keyboard Shortcuts
+        </Link>
         <form action={logout}>
           <Button type="submit" variant="destructive" size="sm" className="w-full">
             Log out
