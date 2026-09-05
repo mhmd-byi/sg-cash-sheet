@@ -84,6 +84,7 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
     { href: '/my-stock-entries', label: 'My Stock Entries' },
     ...(isAdmin
       ? [
+          { href: '/dashboard', label: 'Dashboard' },
           { href: '/cash-sheets', label: 'Cash Sheets' },
           { href: '/stock-sheets', label: 'Stock Sheets' },
           { href: '/stock-items', label: 'Stock Items' },

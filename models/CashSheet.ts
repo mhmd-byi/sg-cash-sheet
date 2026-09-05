@@ -11,6 +11,7 @@ export interface CashSheetRow {
 export interface CashSheetBase {
   date: string
   openingBalance: number
+  actualClosingCash: number | null
   receipts: CashSheetRow[]
   payments: CashSheetRow[]
   createdBy: mongoose.Types.ObjectId
@@ -23,6 +24,7 @@ export interface CashSheetVirtuals {
   totalReceipts: number
   totalPayments: number
   closingBalance: number
+  cashVariance: number | null
 }
 
 export type CashSheetDocument = mongoose.HydratedDocument<CashSheetBase, object, object, CashSheetVirtuals>
@@ -39,6 +41,7 @@ const CashSheetSchema = new Schema<CashSheetBase, CashSheetModel, object, object
   {
     date: { type: String, required: true, unique: true, match: /^\d{4}-\d{2}-\d{2}$/ },
     openingBalance: { type: Number, required: true, default: 0 },
+    actualClosingCash: { type: Number, default: null },
     receipts: { type: [RowSchema], default: [] },
     payments: { type: [RowSchema], default: [] },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -57,6 +60,10 @@ CashSheetSchema.virtual('totalPayments').get(function (this: CashSheetDocument) 
 
 CashSheetSchema.virtual('closingBalance').get(function (this: CashSheetDocument) {
   return this.openingBalance + this.totalReceipts - this.totalPayments
+})
+
+CashSheetSchema.virtual('cashVariance').get(function (this: CashSheetDocument) {
+  return this.actualClosingCash == null ? null : this.actualClosingCash - this.closingBalance
 })
 
 export const CashSheet: CashSheetModel =

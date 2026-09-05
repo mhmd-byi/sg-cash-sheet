@@ -16,6 +16,7 @@ type FormRow = Omit<CashSheetRowDTO, 'id' | 'enteredByName'> & Partial<Pick<Cash
 
 interface CashSheetFormValues {
   openingBalance: number
+  actualClosingCash: number | null
   receipts: FormRow[]
   payments: FormRow[]
 }
@@ -40,6 +41,7 @@ export function CashSheetForm({
   const form = useForm({
     defaultValues: {
       openingBalance: initialData?.openingBalance ?? defaultOpeningBalance,
+      actualClosingCash: initialData?.actualClosingCash ?? null,
       receipts: initialData?.receipts ?? [],
       payments: initialData?.payments ?? [],
     } as CashSheetFormValues,
@@ -150,22 +152,40 @@ export function CashSheetForm({
           <option key={value} value={value} />
         ))}
       </datalist>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-lg font-medium">{date}</h1>
-        <form.Field name="openingBalance">
-          {(field) => (
-            <Field orientation="horizontal" className="w-auto items-center">
-              <FieldLabel htmlFor="openingBalance">Opening Balance (₹)</FieldLabel>
-              <NumberFieldInput
-                id="openingBalance"
-                step="0.01"
-                className="w-40"
-                value={field.state.value}
-                onChange={field.handleChange}
-              />
-            </Field>
-          )}
-        </form.Field>
+        <div className="flex flex-wrap items-center gap-3">
+          <form.Field name="openingBalance">
+            {(field) => (
+              <Field orientation="horizontal" className="w-auto items-center">
+                <FieldLabel htmlFor="openingBalance">Opening Balance (₹)</FieldLabel>
+                <NumberFieldInput
+                  id="openingBalance"
+                  step="0.01"
+                  className="w-40"
+                  value={field.state.value}
+                  onChange={field.handleChange}
+                />
+              </Field>
+            )}
+          </form.Field>
+          <form.Field name="actualClosingCash">
+            {(field) => (
+              <Field orientation="horizontal" className="w-auto items-center">
+                <FieldLabel htmlFor="actualClosingCash">Actual Cash Counted (₹)</FieldLabel>
+                <Input
+                  id="actualClosingCash"
+                  type="number"
+                  step="0.01"
+                  className="w-40"
+                  placeholder="Not counted"
+                  value={field.state.value ?? ''}
+                  onChange={(e) => field.handleChange(e.target.value === '' ? null : Number(e.target.value))}
+                />
+              </Field>
+            )}
+          </form.Field>
+        </div>
       </div>
 
       <div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2">
@@ -178,12 +198,14 @@ export function CashSheetForm({
           receipts: state.values.receipts,
           payments: state.values.payments,
           openingBalance: state.values.openingBalance,
+          actualClosingCash: state.values.actualClosingCash,
         })}
       >
-        {({ receipts, payments, openingBalance }) => {
+        {({ receipts, payments, openingBalance, actualClosingCash }) => {
           const totalReceipts = receipts.reduce((sum, row) => sum + (row.amount || 0), 0)
           const totalPayments = payments.reduce((sum, row) => sum + (row.amount || 0), 0)
           const closingBalance = (openingBalance || 0) + totalReceipts - totalPayments
+          const variance = actualClosingCash == null ? null : actualClosingCash - closingBalance
 
           return (
             <Card size="sm">
@@ -191,6 +213,17 @@ export function CashSheetForm({
                 <Totals label="Total Receipt" value={totalReceipts} />
                 <Totals label="Total Payment" value={totalPayments} />
                 <Totals label="Closing Balance" value={closingBalance} emphasize />
+                <div className="flex flex-col">
+                  <span className="text-sm text-muted-foreground">Cash Variance</span>
+                  {variance == null ? (
+                    <span className="font-medium text-muted-foreground">Not counted</span>
+                  ) : (
+                    <span className={`font-medium ${variance < 0 ? 'text-destructive' : 'text-primary'}`}>
+                      {variance >= 0 ? '+' : ''}
+                      {formatINR(variance)} {variance >= 0 ? 'excess' : 'short'}
+                    </span>
+                  )}
+                </div>
               </CardContent>
             </Card>
           )

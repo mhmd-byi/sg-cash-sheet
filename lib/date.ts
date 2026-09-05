@@ -18,13 +18,33 @@ export function isValidDateString(value: string) {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
 }
 
+export function getDateDaysAgo(days: number) {
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+  return formatter.format(cutoff)
+}
+
+// Every YYYY-MM-DD between start and end, inclusive — used to scaffold a full
+// calendar range for time-series charts so days with no data show as zero
+// rather than creating a gap.
+export function getDateRange(start: string, end: string): string[] {
+  const [startYear, startMonth, startDay] = start.split('-').map(Number)
+  const [endYear, endMonth, endDay] = end.split('-').map(Number)
+  const startUTC = Date.UTC(startYear, startMonth - 1, startDay)
+  const endUTC = Date.UTC(endYear, endMonth - 1, endDay)
+
+  const dates: string[] = []
+  for (let t = startUTC; t <= endUTC; t += 24 * 60 * 60 * 1000) {
+    dates.push(formatter.format(new Date(t)))
+  }
+  return dates
+}
+
 // How far back staff can log their own entries (My Entries / My Stock Entries) — a
 // same-week correction window, not unlimited backdating. Admin isn't bound by this.
 export const ENTRY_BACKDATE_WINDOW_DAYS = 7
 
 export function getEarliestEntryDateString() {
-  const cutoff = new Date(Date.now() - ENTRY_BACKDATE_WINDOW_DAYS * 24 * 60 * 60 * 1000)
-  return formatter.format(cutoff)
+  return getDateDaysAgo(ENTRY_BACKDATE_WINDOW_DAYS)
 }
 
 export function isWithinEntryWindow(date: string) {

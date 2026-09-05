@@ -26,11 +26,13 @@ export interface CashSheetRowDTO {
 export interface CashSheetDetail {
   date: string
   openingBalance: number
+  actualClosingCash: number | null
   receipts: CashSheetRowDTO[]
   payments: CashSheetRowDTO[]
   totalReceipts: number
   totalPayments: number
   closingBalance: number
+  cashVariance: number | null
 }
 
 export async function getCashSheetsList(): Promise<CashSheetListItem[]> {
@@ -76,11 +78,13 @@ export async function getCashSheetByDate(date: string): Promise<CashSheetDetail 
   return {
     date: sheet.date,
     openingBalance: sheet.openingBalance,
+    actualClosingCash: sheet.actualClosingCash,
     receipts: sheet.receipts.map(toRowDTO),
     payments: sheet.payments.map(toRowDTO),
     totalReceipts: sheet.totalReceipts,
     totalPayments: sheet.totalPayments,
     closingBalance: sheet.closingBalance,
+    cashVariance: sheet.cashVariance,
   }
 }
 
@@ -106,6 +110,7 @@ export interface SaveCashSheetRowInput {
 export interface SaveCashSheetInput {
   date: string
   openingBalance: number
+  actualClosingCash: number | null
   receipts: SaveCashSheetRowInput[]
   payments: SaveCashSheetRowInput[]
 }
@@ -135,6 +140,7 @@ export async function saveCashSheet(input: SaveCashSheetInput) {
     {
       $set: {
         openingBalance: input.openingBalance,
+        actualClosingCash: input.actualClosingCash,
         receipts: mergeRows(input.receipts, existingReceiptsById),
         payments: mergeRows(input.payments, existingPaymentsById),
         updatedBy: admin.id,

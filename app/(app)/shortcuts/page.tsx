@@ -11,6 +11,7 @@ export default async function ShortcutsPage() {
     { keys: 'G then T', description: 'Go to My Stock Entries' },
     ...(isAdmin
       ? [
+          { keys: 'G then D', description: 'Go to Dashboard' },
           { keys: 'G then C', description: 'Go to Cash Sheets' },
           { keys: 'G then S', description: 'Go to Stock Sheets' },
           { keys: 'G then I', description: 'Go to Stock Items' },

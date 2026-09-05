@@ -10,6 +10,7 @@ const COMMON_GO_TO_ROUTES: Record<string, string> = {
 }
 
 const ADMIN_GO_TO_ROUTES: Record<string, string> = {
+  d: '/dashboard',
   c: '/cash-sheets',
   s: '/stock-sheets',
   i: '/stock-items',
