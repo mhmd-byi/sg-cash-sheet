@@ -89,7 +89,10 @@ export async function getStockSheetByDate(date: string): Promise<StockSheetDetai
   )
 
   const storedItemsById = new Map(sheet?.items.map((row) => [row.itemId.toString(), row]) ?? [])
-  const previousClosing = sheet ? null : await getPreviousStockCounts(date)
+  // Always look this up, even if a sheet doc already exists for `date` — one may have been
+  // created by a staff member's own transfer entry (My Stock Entries) before any item counts
+  // were ever saved, in which case per-item opening values still need to carry forward.
+  const previousClosing = await getPreviousStockCounts(date)
 
   const netBoxByItem = new Map<string, number>()
   const netPcsByItem = new Map<string, number>()
@@ -106,7 +109,7 @@ export async function getStockSheetByDate(date: string): Promise<StockSheetDetai
   const items: StockItemCountDTO[] = activeItems.map((item) => {
     const id = item._id.toString()
     const stored = storedItemsById.get(id)
-    const carriedOpening = previousClosing?.get(id)
+    const carriedOpening = previousClosing.get(id)
     const openingBox = stored?.openingBox ?? carriedOpening?.box ?? 0
     const openingPcs = stored?.openingPcs ?? carriedOpening?.pcs ?? 0
 

@@ -84,12 +84,16 @@ export async function getCashSheetByDate(date: string): Promise<CashSheetDetail 
   }
 }
 
+async function findPreviousClosingBalance(beforeDate: string): Promise<number | null> {
+  const sheet = await CashSheet.findOne({ date: { $lt: beforeDate } }).sort({ date: -1 })
+  return sheet ? sheet.closingBalance : null
+}
+
 export async function getPreviousClosingBalance(beforeDate: string): Promise<number | null> {
   await requireAdmin()
   await connectDB()
 
-  const sheet = await CashSheet.findOne({ date: { $lt: beforeDate } }).sort({ date: -1 })
-  return sheet ? sheet.closingBalance : null
+  return findPreviousClosingBalance(beforeDate)
 }
 
 export interface SaveCashSheetRowInput {
@@ -218,13 +222,14 @@ export async function addMyEntry(input: AddMyEntryInput) {
 
   const update =
     input.type === 'receipt' ? { $push: { receipts: row } as const } : { $push: { payments: row } as const }
+  const openingBalance = (await findPreviousClosingBalance(date)) ?? 0
 
   await CashSheet.findOneAndUpdate(
     { date },
     {
       ...update,
       $set: { updatedBy: session.userId },
-      $setOnInsert: { createdBy: session.userId, openingBalance: 0 },
+      $setOnInsert: { createdBy: session.userId, openingBalance },
     },
     { upsert: true, runValidators: true },
   )
