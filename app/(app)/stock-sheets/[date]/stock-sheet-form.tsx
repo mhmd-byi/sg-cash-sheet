@@ -103,7 +103,7 @@ export function StockSheetForm({
         form.handleSubmit()
       }}
       onKeyDown={(e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'Enter') {
           e.preventDefault()
           form.handleSubmit()
         }
@@ -225,8 +225,11 @@ export function StockSheetForm({
               <div
                 className="contents"
                 onKeyDown={(e) => {
-                  if (e.altKey && e.key === 'Enter') {
+                  const isAddRowShortcut =
+                    (e.altKey && e.key === 'Enter') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter')
+                  if (isAddRowShortcut) {
                     e.preventDefault()
+                    e.stopPropagation()
                     field.pushValue(emptyTransfer())
                   }
                 }}

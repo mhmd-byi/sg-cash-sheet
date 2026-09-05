@@ -22,13 +22,8 @@ export default async function ShortcutsPage() {
   ]
 
   const formShortcuts = [
-    { keys: 'Ctrl+Enter (Cmd+Enter on Mac)', description: 'Submit the form — works from any field' },
-    {
-      keys: 'Alt+Enter',
-      description: isAdmin
-        ? 'Add a new row to the Receipts, Payments, or Transfers section you’re currently in'
-        : 'Add a new row (Cash Sheet/Stock Sheet full editors, admin only)',
-    },
+    { keys: 'Ctrl+Enter (Cmd+Enter on Mac)', description: 'Save all rows — works from any field' },
+    { keys: 'Ctrl+Shift+Enter (or Alt+Enter)', description: 'Add a new row to the section you’re currently in' },
   ]
 
   return (

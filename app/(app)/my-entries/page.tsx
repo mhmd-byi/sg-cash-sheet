@@ -11,7 +11,7 @@ export default async function MyEntriesPage() {
       <h1 className="font-heading text-lg font-medium">My Entries</h1>
       <Card>
         <CardHeader>
-          <CardTitle>Add an entry for today</CardTitle>
+          <CardTitle>Add entries</CardTitle>
         </CardHeader>
         <CardContent>
           <EntryForm particularSuggestions={particularSuggestions} />

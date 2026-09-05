@@ -203,37 +203,45 @@ export async function getMyEntries(): Promise<MyEntryRow[]> {
   ])
 }
 
-export interface AddMyEntryInput {
-  date: string
+export interface AddMyEntryRowInput {
   type: 'receipt' | 'payment'
   particular: string
   amount: number
   remark: string
 }
 
-export async function addMyEntry(input: AddMyEntryInput) {
+export interface AddMyEntriesInput {
+  date: string
+  entries: AddMyEntryRowInput[]
+}
+
+export async function addMyEntries(input: AddMyEntriesInput) {
   const session = await verifySession()
   if (!isWithinEntryWindow(input.date)) {
     throw new Error(`You can only log entries within the last ${ENTRY_BACKDATE_WINDOW_DAYS} days.`)
   }
   await connectDB()
 
-  const date = input.date
-  const row: Omit<CashSheetRow, '_id'> = {
-    particular: input.particular,
-    amount: input.amount,
-    remark: input.remark,
+  const toRow = (entry: AddMyEntryRowInput): Omit<CashSheetRow, '_id'> => ({
+    particular: entry.particular,
+    amount: entry.amount,
+    remark: entry.remark,
     enteredBy: new mongoose.Types.ObjectId(session.userId),
-  }
+  })
 
-  const update =
-    input.type === 'receipt' ? { $push: { receipts: row } as const } : { $push: { payments: row } as const }
-  const openingBalance = (await findPreviousClosingBalance(date)) ?? 0
+  const receiptRows = input.entries.filter((e) => e.type === 'receipt').map(toRow)
+  const paymentRows = input.entries.filter((e) => e.type === 'payment').map(toRow)
+
+  const pushOps: Record<string, unknown> = {}
+  if (receiptRows.length > 0) pushOps.receipts = { $each: receiptRows }
+  if (paymentRows.length > 0) pushOps.payments = { $each: paymentRows }
+
+  const openingBalance = (await findPreviousClosingBalance(input.date)) ?? 0
 
   await CashSheet.findOneAndUpdate(
-    { date },
+    { date: input.date },
     {
-      ...update,
+      ...(Object.keys(pushOps).length > 0 ? { $push: pushOps } : {}),
       $set: { updatedBy: session.userId },
       $setOnInsert: { createdBy: session.userId, openingBalance },
     },

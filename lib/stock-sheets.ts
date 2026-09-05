@@ -270,8 +270,7 @@ export async function getMyStockEntries(): Promise<MyStockEntryRow[]> {
   }))
 }
 
-export interface AddMyStockEntryInput {
-  date: string
+export interface AddMyStockEntryRowInput {
   type: 'receive' | 'issue'
   itemId: string
   particulars: string
@@ -280,28 +279,32 @@ export interface AddMyStockEntryInput {
   remark: string
 }
 
-export async function addMyStockEntry(input: AddMyStockEntryInput) {
+export interface AddMyStockEntriesInput {
+  date: string
+  entries: AddMyStockEntryRowInput[]
+}
+
+export async function addMyStockEntries(input: AddMyStockEntriesInput) {
   const session = await verifySession()
   if (!isWithinEntryWindow(input.date)) {
     throw new Error(`You can only log entries within the last ${ENTRY_BACKDATE_WINDOW_DAYS} days.`)
   }
   await connectDB()
 
-  const date = input.date
-  const row = {
-    type: input.type,
-    itemId: input.itemId,
-    particulars: input.particulars,
-    qty: input.qty,
-    unit: input.unit,
-    remark: input.remark,
+  const rows = input.entries.map((entry) => ({
+    type: entry.type,
+    itemId: entry.itemId,
+    particulars: entry.particulars,
+    qty: entry.qty,
+    unit: entry.unit,
+    remark: entry.remark,
     enteredBy: session.userId,
-  }
+  }))
 
   await StockSheet.findOneAndUpdate(
-    { date },
+    { date: input.date },
     {
-      $push: { transfers: row },
+      $push: { transfers: { $each: rows } },
       $set: { updatedBy: session.userId },
       $setOnInsert: { createdBy: session.userId },
     },

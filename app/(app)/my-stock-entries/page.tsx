@@ -16,7 +16,7 @@ export default async function MyStockEntriesPage() {
       <h1 className="font-heading text-lg font-medium">My Stock Entries</h1>
       <Card>
         <CardHeader>
-          <CardTitle>Log a receive or issue for today</CardTitle>
+          <CardTitle>Log receive / issue entries</CardTitle>
         </CardHeader>
         <CardContent>
           <EntryForm items={items} particularSuggestions={particularSuggestions} />
