@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import { verifySession, requireAdmin } from '@/lib/dal'
 import { connectDB } from '@/lib/db'
 import { isWithinEntryWindow, ENTRY_BACKDATE_WINDOW_DAYS } from '@/lib/date'
+import { DEFAULT_PAGE_SIZE, toPaginated, type Paginated } from '@/lib/pagination'
 import { CashSheet, type CashSheetRow } from '@/models/CashSheet'
 
 export interface CashSheetListItem {
@@ -35,15 +36,23 @@ export interface CashSheetDetail {
   cashVariance: number | null
 }
 
-export async function getCashSheetsList(): Promise<CashSheetListItem[]> {
+export async function getCashSheetsList(
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+): Promise<Paginated<CashSheetListItem>> {
   await requireAdmin()
   await connectDB()
 
-  const sheets = await CashSheet.find()
-    .sort({ date: -1 })
-    .populate<{ updatedBy: { name: string } }>('updatedBy', 'name')
+  const [sheets, total] = await Promise.all([
+    CashSheet.find()
+      .sort({ date: -1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .populate<{ updatedBy: { name: string } }>('updatedBy', 'name'),
+    CashSheet.countDocuments(),
+  ])
 
-  return sheets.map((sheet) => ({
+  const rows = sheets.map((sheet) => ({
     date: sheet.date,
     openingBalance: sheet.openingBalance,
     totalReceipts: sheet.totalReceipts,
@@ -52,6 +61,8 @@ export async function getCashSheetsList(): Promise<CashSheetListItem[]> {
     updatedByName: sheet.updatedBy?.name ?? 'Unknown',
     updatedAt: sheet.updatedAt.toISOString(),
   }))
+
+  return toPaginated(rows, total, page, pageSize)
 }
 
 type PopulatedRow = Omit<CashSheetRow, 'enteredBy'> & { enteredBy: { name: string } | null }
@@ -159,11 +170,11 @@ export interface MyEntryRow {
   remark: string
 }
 
-export async function getMyEntries(): Promise<MyEntryRow[]> {
+export async function getMyEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<MyEntryRow>> {
   const session = await verifySession()
   await connectDB()
 
-  return CashSheet.aggregate<MyEntryRow>([
+  const [result] = await CashSheet.aggregate<{ data: MyEntryRow[]; total: { count: number }[] }>([
     {
       $project: {
         date: 1,
@@ -191,16 +202,27 @@ export async function getMyEntries(): Promise<MyEntryRow[]> {
     { $match: { 'rows.enteredBy': new mongoose.Types.ObjectId(session.userId) } },
     { $sort: { date: -1 } },
     {
-      $project: {
-        _id: 0,
-        date: 1,
-        type: '$rows.type',
-        particular: '$rows.particular',
-        amount: '$rows.amount',
-        remark: '$rows.remark',
+      $facet: {
+        data: [
+          { $skip: (page - 1) * pageSize },
+          { $limit: pageSize },
+          {
+            $project: {
+              _id: 0,
+              date: 1,
+              type: '$rows.type',
+              particular: '$rows.particular',
+              amount: '$rows.amount',
+              remark: '$rows.remark',
+            },
+          },
+        ],
+        total: [{ $count: 'count' }],
       },
     },
   ])
+
+  return toPaginated(result?.data ?? [], result?.total[0]?.count ?? 0, page, pageSize)
 }
 
 export interface AddMyEntryRowInput {
@@ -269,11 +291,11 @@ interface AggregatedAllEntry {
   enteredByName: string | null
 }
 
-export async function getAllEntries(): Promise<AllEntryRow[]> {
+export async function getAllEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<AllEntryRow>> {
   await requireAdmin()
   await connectDB()
 
-  const rows = await CashSheet.aggregate<AggregatedAllEntry>([
+  const [result] = await CashSheet.aggregate<{ data: AggregatedAllEntry[]; total: { count: number }[] }>([
     {
       $project: {
         date: 1,
@@ -299,23 +321,33 @@ export async function getAllEntries(): Promise<AllEntryRow[]> {
     },
     { $unwind: '$rows' },
     { $sort: { date: -1 } },
-    { $lookup: { from: 'users', localField: 'rows.enteredBy', foreignField: '_id', as: 'enteredByUser' } },
-    { $unwind: { path: '$enteredByUser', preserveNullAndEmptyArrays: true } },
     {
-      $project: {
-        _id: 0,
-        id: { $toString: '$rows._id' },
-        date: 1,
-        type: '$rows.type',
-        particular: '$rows.particular',
-        amount: '$rows.amount',
-        remark: '$rows.remark',
-        enteredByName: '$enteredByUser.name',
+      $facet: {
+        data: [
+          { $skip: (page - 1) * pageSize },
+          { $limit: pageSize },
+          { $lookup: { from: 'users', localField: 'rows.enteredBy', foreignField: '_id', as: 'enteredByUser' } },
+          { $unwind: { path: '$enteredByUser', preserveNullAndEmptyArrays: true } },
+          {
+            $project: {
+              _id: 0,
+              id: { $toString: '$rows._id' },
+              date: 1,
+              type: '$rows.type',
+              particular: '$rows.particular',
+              amount: '$rows.amount',
+              remark: '$rows.remark',
+              enteredByName: '$enteredByUser.name',
+            },
+          },
+        ],
+        total: [{ $count: 'count' }],
       },
     },
   ])
 
-  return rows.map((row) => ({ ...row, enteredByName: row.enteredByName ?? 'Unknown' }))
+  const rows = (result?.data ?? []).map((row) => ({ ...row, enteredByName: row.enteredByName ?? 'Unknown' }))
+  return toPaginated(rows, result?.total[0]?.count ?? 0, page, pageSize)
 }
 
 export interface UpdateEntryInput {

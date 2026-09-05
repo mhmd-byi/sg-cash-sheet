@@ -2,6 +2,7 @@ import 'server-only'
 import bcrypt from 'bcryptjs'
 import { requireAdmin } from '@/lib/dal'
 import { connectDB } from '@/lib/db'
+import { DEFAULT_PAGE_SIZE, toPaginated, type Paginated } from '@/lib/pagination'
 import { User } from '@/models/User'
 
 export interface UserListItem {
@@ -12,18 +13,29 @@ export interface UserListItem {
   role: 'admin' | 'employee'
 }
 
-export async function getUsersList(): Promise<UserListItem[]> {
+export async function getUsersList(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<UserListItem>> {
   await requireAdmin()
   await connectDB()
 
-  const users = await User.find().select('name username email role').sort({ name: 1 }).lean()
-  return users.map((user) => ({
+  const [users, total] = await Promise.all([
+    User.find()
+      .select('name username email role')
+      .sort({ name: 1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .lean(),
+    User.countDocuments(),
+  ])
+
+  const rows = users.map((user) => ({
     id: user._id.toString(),
     name: user.name,
     username: user.username,
     email: user.email,
     role: user.role,
   }))
+
+  return toPaginated(rows, total, page, pageSize)
 }
 
 export interface CreateUserInput {

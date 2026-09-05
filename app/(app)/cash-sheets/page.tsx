@@ -1,12 +1,21 @@
 import Link from 'next/link'
 import { getCashSheetsList } from '@/lib/cash-sheets'
 import { getTodayDateString } from '@/lib/date'
+import { parsePage, parsePageSize } from '@/lib/pagination'
 import { buttonVariants } from '@/components/ui/button'
 import { DateJumpForm } from '../date-jump-form'
+import { PaginationControls } from '../pagination-controls'
 import { CashSheetsTable } from './cash-sheets-table'
 
-export default async function CashSheetsPage() {
-  const sheets = await getCashSheetsList()
+export default async function CashSheetsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; pageSize?: string }>
+}) {
+  const { page: pageParam, pageSize: pageSizeParam } = await searchParams
+  const page = parsePage(pageParam)
+  const pageSize = parsePageSize(pageSizeParam)
+  const { rows: sheets, totalPages } = await getCashSheetsList(page, pageSize)
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -23,6 +32,7 @@ export default async function CashSheetsPage() {
         </div>
       </div>
       <CashSheetsTable data={sheets} />
+      <PaginationControls basePath="/cash-sheets" page={page} pageSize={pageSize} totalPages={totalPages} />
     </div>
   )
 }

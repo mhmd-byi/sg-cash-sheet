@@ -1,14 +1,23 @@
 import Link from 'next/link'
 import { getUsersList } from '@/lib/users'
 import { getCurrentUser } from '@/lib/dal'
+import { parsePage, parsePageSize } from '@/lib/pagination'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { buttonVariants } from '@/components/ui/button'
+import { PaginationControls } from '../pagination-controls'
 import { CreateUserForm } from './create-user-form'
 import { DeleteUserButton } from './delete-user-button'
 
-export default async function UsersPage() {
-  const [users, currentUser] = await Promise.all([getUsersList(), getCurrentUser()])
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; pageSize?: string }>
+}) {
+  const { page: pageParam, pageSize: pageSizeParam } = await searchParams
+  const page = parsePage(pageParam)
+  const pageSize = parsePageSize(pageSizeParam)
+  const [{ rows: users, totalPages }, currentUser] = await Promise.all([getUsersList(page, pageSize), getCurrentUser()])
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -50,6 +59,7 @@ export default async function UsersPage() {
           ))}
         </TableBody>
       </Table>
+      <PaginationControls basePath="/users" page={page} pageSize={pageSize} totalPages={totalPages} />
     </div>
   )
 }

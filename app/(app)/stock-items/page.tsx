@@ -1,15 +1,26 @@
 import Link from 'next/link'
 import { getStockItemsList } from '@/lib/stock-items'
 import { requireAdmin } from '@/lib/dal'
+import { parsePage, parsePageSize } from '@/lib/pagination'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { buttonVariants } from '@/components/ui/button'
+import { PaginationControls } from '../pagination-controls'
 import { CreateStockItemForm } from './create-stock-item-form'
 import { DeleteStockItemButton } from './delete-stock-item-button'
 
-export default async function StockItemsPage() {
+export default async function StockItemsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; pageSize?: string }>
+}) {
   await requireAdmin()
-  const items = await getStockItemsList()
+  const { page: pageParam, pageSize: pageSizeParam } = await searchParams
+  const page = parsePage(pageParam)
+  const pageSize = parsePageSize(pageSizeParam)
+  const allItems = await getStockItemsList()
+  const totalPages = Math.max(1, Math.ceil(allItems.length / pageSize))
+  const items = allItems.slice((page - 1) * pageSize, page * pageSize)
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -45,6 +56,7 @@ export default async function StockItemsPage() {
           ))}
         </TableBody>
       </Table>
+      <PaginationControls basePath="/stock-items" page={page} pageSize={pageSize} totalPages={totalPages} />
     </div>
   )
 }

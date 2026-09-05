@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import { verifySession, requireAdmin } from '@/lib/dal'
 import { connectDB } from '@/lib/db'
 import { isWithinEntryWindow, ENTRY_BACKDATE_WINDOW_DAYS } from '@/lib/date'
+import { DEFAULT_PAGE_SIZE, toPaginated, type Paginated } from '@/lib/pagination'
 import { StockSheet, type StockTransferRow } from '@/models/StockSheet'
 import { StockItem } from '@/models/StockItem'
 
@@ -13,20 +14,30 @@ export interface StockSheetListItem {
   updatedAt: string
 }
 
-export async function getStockSheetsList(): Promise<StockSheetListItem[]> {
+export async function getStockSheetsList(
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+): Promise<Paginated<StockSheetListItem>> {
   await requireAdmin()
   await connectDB()
 
-  const sheets = await StockSheet.find()
-    .sort({ date: -1 })
-    .populate<{ updatedBy: { name: string } }>('updatedBy', 'name')
+  const [sheets, total] = await Promise.all([
+    StockSheet.find()
+      .sort({ date: -1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .populate<{ updatedBy: { name: string } }>('updatedBy', 'name'),
+    StockSheet.countDocuments(),
+  ])
 
-  return sheets.map((sheet) => ({
+  const rows = sheets.map((sheet) => ({
     date: sheet.date,
     transferCount: sheet.transfers.length,
     updatedByName: sheet.updatedBy?.name ?? 'Unknown',
     updatedAt: sheet.updatedAt.toISOString(),
   }))
+
+  return toPaginated(rows, total, page, pageSize)
 }
 
 export async function getPreviousStockCounts(beforeDate: string): Promise<Map<string, { box: number; pcs: number }>> {
@@ -234,24 +245,33 @@ interface AggregatedStockEntry {
   remark: string
 }
 
-export async function getMyStockEntries(): Promise<MyStockEntryRow[]> {
+export async function getMyStockEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<MyStockEntryRow>> {
   const session = await verifySession()
   await connectDB()
 
-  const rows = await StockSheet.aggregate<AggregatedStockEntry>([
+  const [result] = await StockSheet.aggregate<{ data: AggregatedStockEntry[]; total: { count: number }[] }>([
     { $unwind: '$transfers' },
     { $match: { 'transfers.enteredBy': new mongoose.Types.ObjectId(session.userId) } },
     { $sort: { date: -1 } },
     {
-      $project: {
-        _id: 0,
-        date: 1,
-        type: '$transfers.type',
-        itemId: '$transfers.itemId',
-        particulars: '$transfers.particulars',
-        qty: '$transfers.qty',
-        unit: '$transfers.unit',
-        remark: '$transfers.remark',
+      $facet: {
+        data: [
+          { $skip: (page - 1) * pageSize },
+          { $limit: pageSize },
+          {
+            $project: {
+              _id: 0,
+              date: 1,
+              type: '$transfers.type',
+              itemId: '$transfers.itemId',
+              particulars: '$transfers.particulars',
+              qty: '$transfers.qty',
+              unit: '$transfers.unit',
+              remark: '$transfers.remark',
+            },
+          },
+        ],
+        total: [{ $count: 'count' }],
       },
     },
   ])
@@ -259,7 +279,7 @@ export async function getMyStockEntries(): Promise<MyStockEntryRow[]> {
   const items = await StockItem.find().lean()
   const nameById = new Map(items.map((item) => [item._id.toString(), item.name]))
 
-  return rows.map((row) => ({
+  const rows = (result?.data ?? []).map((row) => ({
     date: row.date,
     type: row.type,
     itemName: nameById.get(row.itemId.toString()) ?? 'Unknown item',
@@ -268,6 +288,8 @@ export async function getMyStockEntries(): Promise<MyStockEntryRow[]> {
     unit: row.unit ?? 'pcs',
     remark: row.remark,
   }))
+
+  return toPaginated(rows, result?.total[0]?.count ?? 0, page, pageSize)
 }
 
 export interface AddMyStockEntryRowInput {
@@ -337,27 +359,39 @@ interface AggregatedAllStockEntry {
   enteredByName: string | null
 }
 
-export async function getAllStockEntries(): Promise<AllStockEntryRow[]> {
+export async function getAllStockEntries(
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+): Promise<Paginated<AllStockEntryRow>> {
   await requireAdmin()
   await connectDB()
 
-  const rows = await StockSheet.aggregate<AggregatedAllStockEntry>([
+  const [result] = await StockSheet.aggregate<{ data: AggregatedAllStockEntry[]; total: { count: number }[] }>([
     { $unwind: '$transfers' },
     { $sort: { date: -1 } },
-    { $lookup: { from: 'users', localField: 'transfers.enteredBy', foreignField: '_id', as: 'enteredByUser' } },
-    { $unwind: { path: '$enteredByUser', preserveNullAndEmptyArrays: true } },
     {
-      $project: {
-        _id: 0,
-        id: { $toString: '$transfers._id' },
-        date: 1,
-        type: '$transfers.type',
-        itemId: '$transfers.itemId',
-        particulars: '$transfers.particulars',
-        qty: '$transfers.qty',
-        unit: '$transfers.unit',
-        remark: '$transfers.remark',
-        enteredByName: '$enteredByUser.name',
+      $facet: {
+        data: [
+          { $skip: (page - 1) * pageSize },
+          { $limit: pageSize },
+          { $lookup: { from: 'users', localField: 'transfers.enteredBy', foreignField: '_id', as: 'enteredByUser' } },
+          { $unwind: { path: '$enteredByUser', preserveNullAndEmptyArrays: true } },
+          {
+            $project: {
+              _id: 0,
+              id: { $toString: '$transfers._id' },
+              date: 1,
+              type: '$transfers.type',
+              itemId: '$transfers.itemId',
+              particulars: '$transfers.particulars',
+              qty: '$transfers.qty',
+              unit: '$transfers.unit',
+              remark: '$transfers.remark',
+              enteredByName: '$enteredByUser.name',
+            },
+          },
+        ],
+        total: [{ $count: 'count' }],
       },
     },
   ])
@@ -365,7 +399,7 @@ export async function getAllStockEntries(): Promise<AllStockEntryRow[]> {
   const items = await StockItem.find().lean()
   const nameById = new Map(items.map((item) => [item._id.toString(), item.name]))
 
-  return rows.map((row) => ({
+  const rows = (result?.data ?? []).map((row) => ({
     id: row.id,
     date: row.date,
     type: row.type,
@@ -377,6 +411,8 @@ export async function getAllStockEntries(): Promise<AllStockEntryRow[]> {
     remark: row.remark,
     enteredByName: row.enteredByName ?? 'Unknown',
   }))
+
+  return toPaginated(rows, result?.total[0]?.count ?? 0, page, pageSize)
 }
 
 export interface UpdateStockEntryInput {

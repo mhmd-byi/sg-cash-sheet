@@ -40,7 +40,7 @@ function SidebarContent({
           </Button>
         )}
       </div>
-      <nav className="flex flex-1 flex-col gap-1 px-2">
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2">
         {links.map((link) => (
           <Link
             key={link.href}
@@ -118,7 +118,7 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
         </div>
       )}
 
-      <div className="hidden md:flex md:w-56 md:shrink-0 md:flex-col md:border-r">
+      <div className="hidden md:sticky md:top-0 md:flex md:h-screen md:w-56 md:shrink-0 md:flex-col md:self-start md:border-r">
         <SidebarContent links={links} pathname={pathname} />
       </div>
     </>

@@ -1,12 +1,21 @@
 import Link from 'next/link'
 import { getStockSheetsList } from '@/lib/stock-sheets'
 import { getTodayDateString } from '@/lib/date'
+import { parsePage, parsePageSize } from '@/lib/pagination'
 import { buttonVariants } from '@/components/ui/button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { DateJumpForm } from '../date-jump-form'
+import { PaginationControls } from '../pagination-controls'
 
-export default async function StockSheetsPage() {
-  const sheets = await getStockSheetsList()
+export default async function StockSheetsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; pageSize?: string }>
+}) {
+  const { page: pageParam, pageSize: pageSizeParam } = await searchParams
+  const page = parsePage(pageParam)
+  const pageSize = parsePageSize(pageSizeParam)
+  const { rows: sheets, totalPages } = await getStockSheetsList(page, pageSize)
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -48,6 +57,7 @@ export default async function StockSheetsPage() {
           </TableBody>
         </Table>
       )}
+      <PaginationControls basePath="/stock-sheets" page={page} pageSize={pageSize} totalPages={totalPages} />
     </div>
   )
 }
