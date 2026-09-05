@@ -14,6 +14,9 @@ export default async function StockSheetsPage() {
         <h1 className="font-heading text-lg font-medium">Stock Sheets</h1>
         <div className="flex items-end gap-2">
           <DateJumpForm basePath="/stock-sheets" />
+          <Link href="/stock-sheets/entries" className={buttonVariants({ variant: 'outline' })}>
+            All Entries
+          </Link>
           <Link href={`/stock-sheets/${getTodayDateString()}`} className={buttonVariants({ variant: 'default' })}>
             Today&apos;s Sheet
           </Link>

@@ -312,6 +312,110 @@ export async function addMyStockEntries(input: AddMyStockEntriesInput) {
   )
 }
 
+export interface AllStockEntryRow {
+  id: string
+  date: string
+  type: 'receive' | 'issue'
+  itemId: string
+  itemName: string
+  particulars: string
+  qty: number
+  unit: 'box' | 'pcs' | 'grams'
+  remark: string
+  enteredByName: string
+}
+
+interface AggregatedAllStockEntry {
+  id: string
+  date: string
+  type: 'receive' | 'issue'
+  itemId: mongoose.Types.ObjectId
+  particulars: string | null
+  qty: number
+  unit: 'box' | 'pcs' | 'grams' | null
+  remark: string
+  enteredByName: string | null
+}
+
+export async function getAllStockEntries(): Promise<AllStockEntryRow[]> {
+  await requireAdmin()
+  await connectDB()
+
+  const rows = await StockSheet.aggregate<AggregatedAllStockEntry>([
+    { $unwind: '$transfers' },
+    { $sort: { date: -1 } },
+    { $lookup: { from: 'users', localField: 'transfers.enteredBy', foreignField: '_id', as: 'enteredByUser' } },
+    { $unwind: { path: '$enteredByUser', preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        _id: 0,
+        id: { $toString: '$transfers._id' },
+        date: 1,
+        type: '$transfers.type',
+        itemId: '$transfers.itemId',
+        particulars: '$transfers.particulars',
+        qty: '$transfers.qty',
+        unit: '$transfers.unit',
+        remark: '$transfers.remark',
+        enteredByName: '$enteredByUser.name',
+      },
+    },
+  ])
+
+  const items = await StockItem.find().lean()
+  const nameById = new Map(items.map((item) => [item._id.toString(), item.name]))
+
+  return rows.map((row) => ({
+    id: row.id,
+    date: row.date,
+    type: row.type,
+    itemId: row.itemId.toString(),
+    itemName: nameById.get(row.itemId.toString()) ?? 'Unknown item',
+    particulars: row.particulars ?? '',
+    qty: row.qty,
+    unit: row.unit ?? 'pcs',
+    remark: row.remark,
+    enteredByName: row.enteredByName ?? 'Unknown',
+  }))
+}
+
+export interface UpdateStockEntryInput {
+  type: 'receive' | 'issue'
+  itemId: string
+  particulars: string
+  qty: number
+  unit: 'box' | 'pcs' | 'grams'
+  remark: string
+}
+
+export async function updateStockEntry(date: string, id: string, input: UpdateStockEntryInput) {
+  const admin = await requireAdmin()
+  await connectDB()
+
+  const result = await StockSheet.updateOne(
+    { date, 'transfers._id': id },
+    {
+      $set: {
+        'transfers.$.type': input.type,
+        'transfers.$.itemId': input.itemId,
+        'transfers.$.particulars': input.particulars,
+        'transfers.$.qty': input.qty,
+        'transfers.$.unit': input.unit,
+        'transfers.$.remark': input.remark,
+        updatedBy: admin.id,
+      },
+    },
+  )
+  if (result.matchedCount === 0) throw new Error('Entry not found.')
+}
+
+export async function deleteStockEntry(date: string, id: string) {
+  const admin = await requireAdmin()
+  await connectDB()
+
+  await StockSheet.updateOne({ date }, { $pull: { transfers: { _id: id } }, $set: { updatedBy: admin.id } })
+}
+
 export async function getDistinctParticulars(): Promise<string[]> {
   await verifySession()
   await connectDB()

@@ -249,6 +249,114 @@ export async function addMyEntries(input: AddMyEntriesInput) {
   )
 }
 
+export interface AllEntryRow {
+  id: string
+  date: string
+  type: 'receipt' | 'payment'
+  particular: string
+  amount: number
+  remark: string
+  enteredByName: string
+}
+
+interface AggregatedAllEntry {
+  id: string
+  date: string
+  type: 'receipt' | 'payment'
+  particular: string
+  amount: number
+  remark: string
+  enteredByName: string | null
+}
+
+export async function getAllEntries(): Promise<AllEntryRow[]> {
+  await requireAdmin()
+  await connectDB()
+
+  const rows = await CashSheet.aggregate<AggregatedAllEntry>([
+    {
+      $project: {
+        date: 1,
+        rows: {
+          $concatArrays: [
+            {
+              $map: {
+                input: '$receipts',
+                as: 'r',
+                in: { _id: '$$r._id', type: 'receipt', particular: '$$r.particular', amount: '$$r.amount', remark: '$$r.remark', enteredBy: '$$r.enteredBy' },
+              },
+            },
+            {
+              $map: {
+                input: '$payments',
+                as: 'p',
+                in: { _id: '$$p._id', type: 'payment', particular: '$$p.particular', amount: '$$p.amount', remark: '$$p.remark', enteredBy: '$$p.enteredBy' },
+              },
+            },
+          ],
+        },
+      },
+    },
+    { $unwind: '$rows' },
+    { $sort: { date: -1 } },
+    { $lookup: { from: 'users', localField: 'rows.enteredBy', foreignField: '_id', as: 'enteredByUser' } },
+    { $unwind: { path: '$enteredByUser', preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        _id: 0,
+        id: { $toString: '$rows._id' },
+        date: 1,
+        type: '$rows.type',
+        particular: '$rows.particular',
+        amount: '$rows.amount',
+        remark: '$rows.remark',
+        enteredByName: '$enteredByUser.name',
+      },
+    },
+  ])
+
+  return rows.map((row) => ({ ...row, enteredByName: row.enteredByName ?? 'Unknown' }))
+}
+
+export interface UpdateEntryInput {
+  type: 'receipt' | 'payment'
+  particular: string
+  amount: number
+  remark: string
+}
+
+export async function updateEntry(date: string, id: string, input: UpdateEntryInput) {
+  const admin = await requireAdmin()
+  await connectDB()
+
+  const sheet = await CashSheet.findOne({ date })
+  if (!sheet) throw new Error('Entry not found.')
+  const existing = sheet.receipts.find((row) => row._id.toString() === id) ?? sheet.payments.find((row) => row._id.toString() === id)
+  if (!existing) throw new Error('Entry not found.')
+
+  const field = input.type === 'receipt' ? 'receipts' : 'payments'
+  const newRow = {
+    _id: existing._id,
+    particular: input.particular,
+    amount: input.amount,
+    remark: input.remark,
+    enteredBy: existing.enteredBy,
+  }
+
+  await CashSheet.updateOne({ date }, { $pull: { receipts: { _id: id }, payments: { _id: id } } })
+  await CashSheet.updateOne({ date }, { $push: { [field]: newRow }, $set: { updatedBy: admin.id } })
+}
+
+export async function deleteEntry(date: string, id: string) {
+  const admin = await requireAdmin()
+  await connectDB()
+
+  await CashSheet.updateOne(
+    { date },
+    { $pull: { receipts: { _id: id }, payments: { _id: id } }, $set: { updatedBy: admin.id } },
+  )
+}
+
 export async function getDistinctParticulars(): Promise<string[]> {
   await verifySession()
   await connectDB()

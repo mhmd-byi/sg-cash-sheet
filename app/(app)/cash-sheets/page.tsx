@@ -14,6 +14,9 @@ export default async function CashSheetsPage() {
         <h1 className="font-heading text-lg font-medium">Cash Sheets</h1>
         <div className="flex items-end gap-2">
           <DateJumpForm basePath="/cash-sheets" />
+          <Link href="/cash-sheets/entries" className={buttonVariants({ variant: 'outline' })}>
+            All Entries
+          </Link>
           <Link href={`/cash-sheets/${getTodayDateString()}`} className={buttonVariants({ variant: 'default' })}>
             Today&apos;s Sheet
           </Link>
