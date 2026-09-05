@@ -102,6 +102,12 @@ export function StockSheetForm({
         e.stopPropagation()
         form.handleSubmit()
       }}
+      onKeyDown={(e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault()
+          form.handleSubmit()
+        }
+      }}
       className="flex flex-1 flex-col gap-4"
     >
       <datalist id="particular-suggestions">
@@ -216,7 +222,15 @@ export function StockSheetForm({
         <CardContent className="flex flex-col gap-3">
           <form.Field name="transfers" mode="array">
             {(field) => (
-              <>
+              <div
+                className="contents"
+                onKeyDown={(e) => {
+                  if (e.altKey && e.key === 'Enter') {
+                    e.preventDefault()
+                    field.pushValue(emptyTransfer())
+                  }
+                }}
+              >
                 {field.state.value.map((row: TransferFormRow, i: number) => (
                   <div key={i} className="grid grid-cols-[7rem_10rem_1fr_5rem_6rem_1fr_8rem_auto] items-end gap-2">
                     <form.Field name={`transfers[${i}].type`}>
@@ -319,7 +333,7 @@ export function StockSheetForm({
                 >
                   Add row
                 </Button>
-              </>
+              </div>
             )}
           </form.Field>
         </CardContent>

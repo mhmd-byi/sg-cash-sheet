@@ -63,7 +63,15 @@ export function CashSheetForm({
         <CardContent className="flex flex-col gap-3">
           <form.Field name={name} mode="array">
             {(field) => (
-              <>
+              <div
+                className="contents"
+                onKeyDown={(e) => {
+                  if (e.altKey && e.key === 'Enter') {
+                    e.preventDefault()
+                    field.pushValue(emptyRow())
+                  }
+                }}
+              >
                 {field.state.value.map((row: FormRow, i: number) => (
                   <div key={i} className="grid grid-cols-[1fr_7rem_1fr_6rem_auto] items-end gap-2">
                     <form.Field name={`${name}[${i}].particular`}>
@@ -114,7 +122,7 @@ export function CashSheetForm({
                 >
                   Add row
                 </Button>
-              </>
+              </div>
             )}
           </form.Field>
         </CardContent>
@@ -128,6 +136,12 @@ export function CashSheetForm({
         e.preventDefault()
         e.stopPropagation()
         form.handleSubmit()
+      }}
+      onKeyDown={(e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault()
+          form.handleSubmit()
+        }
       }}
       className="flex flex-1 flex-col gap-4"
     >

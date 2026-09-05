@@ -28,7 +28,17 @@ export function EntryForm({ particularSuggestions }: { particularSuggestions: st
   }, undefined)
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-3">
+    <form
+      ref={formRef}
+      action={formAction}
+      className="flex flex-col gap-3"
+      onKeyDown={(e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault()
+          formRef.current?.requestSubmit()
+        }
+      }}
+    >
       <datalist id="particular-suggestions">
         {particularSuggestions.map((value) => (
           <option key={value} value={value} />
