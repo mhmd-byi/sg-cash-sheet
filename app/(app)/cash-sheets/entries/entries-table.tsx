@@ -8,6 +8,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NumberFieldInput } from '@/app/(app)/number-field-input'
+import { StatusBadge } from '@/app/(app)/status-badge'
 import { formatINR } from '@/lib/currency'
 import { updateEntry, deleteEntry } from './actions'
 import type { AllEntryRow } from '@/lib/cash-sheets'
@@ -79,6 +80,7 @@ export function EntriesTable({ data }: { data: AllEntryRow[] }) {
           <TableHead>Amount</TableHead>
           <TableHead>Remark</TableHead>
           <TableHead>Entered By</TableHead>
+          <TableHead>Status</TableHead>
           <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -133,6 +135,9 @@ export function EntriesTable({ data }: { data: AllEntryRow[] }) {
                 )}
               </TableCell>
               <TableCell>{row.enteredByName}</TableCell>
+              <TableCell>
+                <StatusBadge status={row.status} />
+              </TableCell>
               <TableCell>
                 <div className="flex gap-2">
                   {isEditing ? (

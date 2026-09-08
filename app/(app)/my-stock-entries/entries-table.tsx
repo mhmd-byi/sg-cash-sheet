@@ -1,4 +1,5 @@
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { StatusBadge } from '@/app/(app)/status-badge'
 import type { MyStockEntryRow } from '@/lib/stock-sheets'
 
 export function EntriesTable({ data }: { data: MyStockEntryRow[] }) {
@@ -17,6 +18,7 @@ export function EntriesTable({ data }: { data: MyStockEntryRow[] }) {
           <TableHead>Qty</TableHead>
           <TableHead>Unit</TableHead>
           <TableHead>Remark</TableHead>
+          <TableHead>Status</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -29,6 +31,9 @@ export function EntriesTable({ data }: { data: MyStockEntryRow[] }) {
             <TableCell>{entry.qty}</TableCell>
             <TableCell className="capitalize">{entry.unit}</TableCell>
             <TableCell>{entry.remark}</TableCell>
+            <TableCell>
+              <StatusBadge status={entry.status} />
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>

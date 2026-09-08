@@ -20,7 +20,7 @@ const CreateUserSchema = z.object({
   username: UsernameSchema,
   password: z.string().min(8, 'Password must be at least 8 characters.'),
   name: z.string().trim().min(1, 'Name is required.'),
-  role: z.enum(['admin', 'employee']),
+  role: z.enum(['admin', 'maker', 'checker']),
 })
 
 export interface CreateUserResult {
@@ -55,7 +55,7 @@ const UpdateUserSchema = z.object({
   name: z.string().trim().min(1, 'Name is required.'),
   username: UsernameSchema,
   email: z.email(),
-  role: z.enum(['admin', 'employee']),
+  role: z.enum(['admin', 'maker', 'checker']),
   password: z
     .string()
     .trim()

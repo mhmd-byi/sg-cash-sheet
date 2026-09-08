@@ -1,11 +1,13 @@
 import 'server-only'
 import mongoose from 'mongoose'
-import { verifySession, requireAdmin } from '@/lib/dal'
+import { verifySession, requireAdmin, requireCheckerOrAdmin } from '@/lib/dal'
 import { connectDB } from '@/lib/db'
 import { isWithinEntryWindow, ENTRY_BACKDATE_WINDOW_DAYS } from '@/lib/date'
 import { DEFAULT_PAGE_SIZE, toPaginated, type Paginated } from '@/lib/pagination'
+import { createNotification } from '@/lib/notifications'
 import { StockSheet, type StockTransferRow } from '@/models/StockSheet'
 import { StockItem } from '@/models/StockItem'
+import { User } from '@/models/User'
 
 export interface StockSheetListItem {
   date: string
@@ -84,6 +86,11 @@ export interface StockTransferRowDTO {
   unit: 'box' | 'pcs' | 'grams'
   remark: string
   enteredByName: string
+  status: 'pending' | 'approved' | 'rejected'
+}
+
+function isApprovedTransfer(row: Pick<StockTransferRow, 'status'>) {
+  return (row.status ?? 'approved') === 'approved'
 }
 
 export interface StockSheetDetail {
@@ -114,7 +121,7 @@ export async function getStockSheetByDate(date: string): Promise<StockSheetDetai
 
   const netBoxByItem = new Map<string, number>()
   const netPcsByItem = new Map<string, number>()
-  for (const row of sheet?.transfers ?? []) {
+  for (const row of sheet?.transfers.filter(isApprovedTransfer) ?? []) {
     const key = row.itemId.toString()
     const delta = row.type === 'receive' ? row.qty : -row.qty
     const unit = row.unit ?? 'pcs'
@@ -157,6 +164,7 @@ export async function getStockSheetByDate(date: string): Promise<StockSheetDetai
     unit: row.unit ?? 'pcs',
     remark: row.remark,
     enteredByName: row.enteredBy?.name ?? 'Unknown',
+    status: row.status,
   }))
 
   return { date, items, transfers }
@@ -207,6 +215,11 @@ export async function saveStockSheet(input: SaveStockSheetInput) {
       unit: row.unit,
       remark: row.remark,
       enteredBy: match ? match.enteredBy : admin.id,
+      // A brand-new row typed directly into the admin editor is admin-authored, so it bypasses
+      // review entirely; a matched row keeps whatever review state it already had.
+      status: match ? match.status : 'approved',
+      reviewedBy: match ? match.reviewedBy : admin.id,
+      reviewedAt: match ? match.reviewedAt : new Date(),
     }
   })
 
@@ -240,6 +253,7 @@ export interface MyStockEntryRow {
   qty: number
   unit: 'box' | 'pcs' | 'grams'
   remark: string
+  status: 'pending' | 'approved' | 'rejected'
 }
 
 interface AggregatedStockEntry {
@@ -250,6 +264,7 @@ interface AggregatedStockEntry {
   qty: number
   unit: 'box' | 'pcs' | 'grams' | undefined
   remark: string
+  status: 'pending' | 'approved' | 'rejected' | undefined
 }
 
 export async function getMyStockEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<MyStockEntryRow>> {
@@ -275,6 +290,7 @@ export async function getMyStockEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE):
               qty: '$transfers.qty',
               unit: '$transfers.unit',
               remark: '$transfers.remark',
+              status: '$transfers.status',
             },
           },
         ],
@@ -294,6 +310,7 @@ export async function getMyStockEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE):
     qty: row.qty,
     unit: row.unit ?? 'pcs',
     remark: row.remark,
+    status: row.status ?? ('approved' as const),
   }))
 
   return toPaginated(rows, result?.total[0]?.count ?? 0, page, pageSize)
@@ -320,6 +337,9 @@ export async function addMyStockEntries(input: AddMyStockEntriesInput) {
   }
   await connectDB()
 
+  const actingUser = await User.findById(session.userId).select('role')
+  const status = actingUser?.role === 'admin' ? 'approved' : 'pending'
+
   const rows = input.entries.map((entry) => ({
     type: entry.type,
     itemId: entry.itemId,
@@ -328,6 +348,9 @@ export async function addMyStockEntries(input: AddMyStockEntriesInput) {
     unit: entry.unit,
     remark: entry.remark,
     enteredBy: session.userId,
+    status,
+    reviewedBy: status === 'approved' ? session.userId : null,
+    reviewedAt: status === 'approved' ? new Date() : null,
   }))
 
   await StockSheet.findOneAndUpdate(
@@ -352,6 +375,7 @@ export interface AllStockEntryRow {
   unit: 'box' | 'pcs' | 'grams'
   remark: string
   enteredByName: string
+  status: 'pending' | 'approved' | 'rejected'
 }
 
 interface AggregatedAllStockEntry {
@@ -364,6 +388,7 @@ interface AggregatedAllStockEntry {
   unit: 'box' | 'pcs' | 'grams' | null
   remark: string
   enteredByName: string | null
+  status: 'pending' | 'approved' | 'rejected' | null
 }
 
 export async function getAllStockEntries(
@@ -375,6 +400,90 @@ export async function getAllStockEntries(
 
   const [result] = await StockSheet.aggregate<{ data: AggregatedAllStockEntry[]; total: { count: number }[] }>([
     { $unwind: '$transfers' },
+    { $sort: { date: -1 } },
+    {
+      $facet: {
+        data: [
+          { $skip: (page - 1) * pageSize },
+          { $limit: pageSize },
+          { $lookup: { from: 'users', localField: 'transfers.enteredBy', foreignField: '_id', as: 'enteredByUser' } },
+          { $unwind: { path: '$enteredByUser', preserveNullAndEmptyArrays: true } },
+          {
+            $project: {
+              _id: 0,
+              id: { $toString: '$transfers._id' },
+              date: 1,
+              type: '$transfers.type',
+              itemId: '$transfers.itemId',
+              particulars: '$transfers.particulars',
+              qty: '$transfers.qty',
+              unit: '$transfers.unit',
+              remark: '$transfers.remark',
+              enteredByName: '$enteredByUser.name',
+              status: '$transfers.status',
+            },
+          },
+        ],
+        total: [{ $count: 'count' }],
+      },
+    },
+  ])
+
+  const items = await StockItem.find().lean()
+  const nameById = new Map(items.map((item) => [item._id.toString(), item.name]))
+
+  const rows = (result?.data ?? []).map((row) => ({
+    id: row.id,
+    date: row.date,
+    type: row.type,
+    itemId: row.itemId.toString(),
+    itemName: nameById.get(row.itemId.toString()) ?? 'Unknown item',
+    particulars: row.particulars ?? '',
+    qty: row.qty,
+    unit: row.unit ?? 'pcs',
+    remark: row.remark,
+    enteredByName: row.enteredByName ?? 'Unknown',
+    status: row.status ?? ('approved' as const),
+  }))
+
+  return toPaginated(rows, result?.total[0]?.count ?? 0, page, pageSize)
+}
+
+export interface PendingStockEntryRow {
+  id: string
+  date: string
+  type: 'receive' | 'issue'
+  itemId: string
+  itemName: string
+  particulars: string
+  qty: number
+  unit: 'box' | 'pcs' | 'grams'
+  remark: string
+  enteredByName: string
+}
+
+interface AggregatedPendingStockEntry {
+  id: string
+  date: string
+  type: 'receive' | 'issue'
+  itemId: mongoose.Types.ObjectId
+  particulars: string | null
+  qty: number
+  unit: 'box' | 'pcs' | 'grams' | null
+  remark: string
+  enteredByName: string | null
+}
+
+export async function getPendingStockEntries(
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+): Promise<Paginated<PendingStockEntryRow>> {
+  await requireCheckerOrAdmin()
+  await connectDB()
+
+  const [result] = await StockSheet.aggregate<{ data: AggregatedPendingStockEntry[]; total: { count: number }[] }>([
+    { $unwind: '$transfers' },
+    { $match: { 'transfers.status': 'pending' } },
     { $sort: { date: -1 } },
     {
       $facet: {
@@ -457,6 +566,41 @@ export async function deleteStockEntry(date: string, id: string) {
   await connectDB()
 
   await StockSheet.updateOne({ date }, { $pull: { transfers: { _id: id } }, $set: { updatedBy: admin.id } })
+}
+
+async function setStockEntryReviewStatus(date: string, id: string, status: 'approved' | 'rejected') {
+  const checker = await requireCheckerOrAdmin()
+  await connectDB()
+
+  const sheet = await StockSheet.findOne({ date })
+  if (!sheet) throw new Error('Entry not found.')
+  const row = sheet.transfers.find((row) => row._id.toString() === id)
+  if (!row) throw new Error('Entry not found.')
+
+  await StockSheet.updateOne(
+    { date, 'transfers._id': id },
+    {
+      $set: {
+        'transfers.$.status': status,
+        'transfers.$.reviewedBy': checker.id,
+        'transfers.$.reviewedAt': new Date(),
+      },
+    },
+  )
+
+  await createNotification(
+    row.enteredBy.toString(),
+    `Your ${row.type} of ${row.qty} ${row.unit} ("${row.particulars}") on ${date} was ${status} by ${checker.name}.`,
+    '/my-stock-entries',
+  )
+}
+
+export async function approveStockEntry(date: string, id: string) {
+  await setStockEntryReviewStatus(date, id, 'approved')
+}
+
+export async function rejectStockEntry(date: string, id: string) {
+  await setStockEntryReviewStatus(date, id, 'rejected')
 }
 
 export async function getDistinctParticulars(): Promise<string[]> {

@@ -21,6 +21,9 @@ export interface StockTransferRow {
   unit: 'box' | 'pcs' | 'grams'
   remark: string
   enteredBy: mongoose.Types.ObjectId
+  status: 'pending' | 'approved' | 'rejected'
+  reviewedBy: mongoose.Types.ObjectId | null
+  reviewedAt: Date | null
 }
 
 export interface StockSheetBase {
@@ -56,6 +59,12 @@ const TransferRowSchema = new Schema<StockTransferRow>({
   unit: { type: String, enum: ['box', 'pcs', 'grams'], required: true, default: 'pcs' },
   remark: { type: String, trim: true, default: '' },
   enteredBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  // Every write path sets `status` explicitly (pending for a maker, approved for admin) - this
+  // default only ever applies when Mongoose hydrates a pre-existing row saved before this field
+  // existed, so it must read as 'approved' or historical stock counts would silently zero out.
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
+  reviewedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  reviewedAt: { type: Date, default: null },
 })
 
 const StockSheetSchema = new Schema<StockSheetBase>(

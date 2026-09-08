@@ -12,7 +12,7 @@ import { saveCashSheet } from '../actions'
 import { NumberFieldInput } from '@/app/(app)/number-field-input'
 import type { CashSheetDetail, CashSheetRowDTO } from '@/lib/cash-sheets'
 
-type FormRow = Omit<CashSheetRowDTO, 'id' | 'enteredByName'> & Partial<Pick<CashSheetRowDTO, 'id' | 'enteredByName'>>
+type FormRow = Omit<CashSheetRowDTO, 'id' | 'enteredByName' | 'status'> & Partial<Pick<CashSheetRowDTO, 'id' | 'enteredByName'>>
 
 interface CashSheetFormValues {
   openingBalance: number

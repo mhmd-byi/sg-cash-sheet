@@ -10,7 +10,7 @@ export interface UserListItem {
   name: string
   username: string
   email: string
-  role: 'admin' | 'employee'
+  role: 'admin' | 'maker' | 'checker'
 }
 
 export async function getUsersList(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<UserListItem>> {
@@ -43,7 +43,7 @@ export interface CreateUserInput {
   username: string
   password: string
   name: string
-  role: 'admin' | 'employee'
+  role: 'admin' | 'maker' | 'checker'
 }
 
 export async function createUser(input: CreateUserInput) {
@@ -68,7 +68,7 @@ export interface UserDetail {
   name: string
   username: string
   email: string
-  role: 'admin' | 'employee'
+  role: 'admin' | 'maker' | 'checker'
 }
 
 export async function getUserById(id: string): Promise<UserDetail | null> {
@@ -94,7 +94,7 @@ export interface UpdateUserInput {
   name: string
   username: string
   email: string
-  role: 'admin' | 'employee'
+  role: 'admin' | 'maker' | 'checker'
   password?: string
 }
 
@@ -111,7 +111,7 @@ export async function updateUser(id: string, input: UpdateUserInput) {
     )
   }
 
-  if (input.role === 'employee') {
+  if (input.role !== 'admin') {
     await assertNotLastAdmin(id)
   }
 

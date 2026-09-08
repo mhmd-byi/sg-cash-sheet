@@ -7,6 +7,9 @@ import { Menu, X } from 'lucide-react'
 import { logout } from '@/lib/actions/auth'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { NotificationBell } from './notification-bell'
+
+type Role = 'admin' | 'maker' | 'checker'
 
 interface NavLink {
   href: string
@@ -20,11 +23,13 @@ function isActive(pathname: string, href: string) {
 function SidebarContent({
   links,
   pathname,
+  unreadCount,
   onNavigate,
   onClose,
 }: {
   links: NavLink[]
   pathname: string
+  unreadCount: number
   onNavigate?: () => void
   onClose?: () => void
 }) {
@@ -58,6 +63,7 @@ function SidebarContent({
         ))}
       </nav>
       <div className="flex flex-col gap-2 border-t p-3">
+        <NotificationBell unreadCount={unreadCount} />
         <Link
           href="/shortcuts"
           onClick={onNavigate}
@@ -75,13 +81,19 @@ function SidebarContent({
   )
 }
 
-export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
+export function Sidebar({ role, unreadCount }: { role: Role; unreadCount: number }) {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
+  const isAdmin = role === 'admin'
 
   const links: NavLink[] = [
-    { href: '/my-entries', label: 'My Entries' },
-    { href: '/my-stock-entries', label: 'My Stock Entries' },
+    ...(role !== 'checker'
+      ? [
+          { href: '/my-entries', label: 'My Entries' },
+          { href: '/my-stock-entries', label: 'My Stock Entries' },
+        ]
+      : []),
+    ...(role === 'checker' || role === 'admin' ? [{ href: '/approvals', label: 'Approvals' }] : []),
     ...(isAdmin
       ? [
           { href: '/dashboard', label: 'Dashboard' },
@@ -113,13 +125,19 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
             onClick={() => setIsOpen(false)}
           />
           <div className="absolute inset-y-0 left-0 w-64 border-r bg-background">
-            <SidebarContent links={links} pathname={pathname} onNavigate={() => setIsOpen(false)} onClose={() => setIsOpen(false)} />
+            <SidebarContent
+              links={links}
+              pathname={pathname}
+              unreadCount={unreadCount}
+              onNavigate={() => setIsOpen(false)}
+              onClose={() => setIsOpen(false)}
+            />
           </div>
         </div>
       )}
 
       <div className="hidden md:sticky md:top-0 md:flex md:h-screen md:w-56 md:shrink-0 md:flex-col md:self-start md:border-r">
-        <SidebarContent links={links} pathname={pathname} />
+        <SidebarContent links={links} pathname={pathname} unreadCount={unreadCount} />
       </div>
     </>
   )

@@ -21,7 +21,7 @@ export interface CurrentUser {
   id: string
   name: string
   email: string
-  role: 'admin' | 'employee'
+  role: 'admin' | 'maker' | 'checker'
 }
 
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
@@ -35,6 +35,14 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 export const requireAdmin = cache(async () => {
   const user = await getCurrentUser()
   if (!user || user.role !== 'admin') {
+    redirect('/my-entries')
+  }
+  return user
+})
+
+export const requireCheckerOrAdmin = cache(async () => {
+  const user = await getCurrentUser()
+  if (!user || (user.role !== 'checker' && user.role !== 'admin')) {
     redirect('/my-entries')
   }
   return user
