@@ -4,11 +4,18 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 export default async function ShortcutsPage() {
   const user = await getCurrentUser()
   const isAdmin = user?.role === 'admin'
+  const isChecker = user?.role === 'checker'
 
   const navigationShortcuts = [
     { keys: 'G then H', description: 'Go to Home' },
-    { keys: 'G then E', description: 'Go to My Entries' },
-    { keys: 'G then T', description: 'Go to My Stock Entries' },
+    ...(user?.role !== 'checker'
+      ? [
+          { keys: 'G then E', description: 'Go to My Entries' },
+          { keys: 'G then T', description: 'Go to My Stock Entries' },
+        ]
+      : []),
+    ...(isAdmin || isChecker ? [{ keys: 'G then A', description: 'Go to Approvals' }] : []),
+    { keys: 'G then N', description: 'Go to Notifications' },
     ...(isAdmin
       ? [
           { keys: 'G then D', description: 'Go to Dashboard' },

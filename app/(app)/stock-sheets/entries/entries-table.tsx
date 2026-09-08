@@ -8,6 +8,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NumberFieldInput } from '@/app/(app)/number-field-input'
+import { StatusBadge } from '@/app/(app)/status-badge'
 import { updateStockEntry, deleteStockEntry } from './actions'
 import type { AllStockEntryRow } from '@/lib/stock-sheets'
 import type { StockItemListItem } from '@/lib/stock-items'
@@ -83,6 +84,7 @@ export function EntriesTable({ data, items }: { data: AllStockEntryRow[]; items:
           <TableHead>Unit</TableHead>
           <TableHead>Remark</TableHead>
           <TableHead>Entered By</TableHead>
+          <TableHead>Status</TableHead>
           <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -165,6 +167,9 @@ export function EntriesTable({ data, items }: { data: AllStockEntryRow[]; items:
                 )}
               </TableCell>
               <TableCell>{row.enteredByName}</TableCell>
+              <TableCell>
+                <StatusBadge status={row.status} />
+              </TableCell>
               <TableCell>
                 <div className="flex gap-2">
                   {isEditing ? (

@@ -3,10 +3,17 @@
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
+type Role = 'admin' | 'maker' | 'checker'
+
 const COMMON_GO_TO_ROUTES: Record<string, string> = {
   h: '/',
   e: '/my-entries',
   t: '/my-stock-entries',
+  n: '/notifications',
+}
+
+const CHECKER_GO_TO_ROUTES: Record<string, string> = {
+  a: '/approvals',
 }
 
 const ADMIN_GO_TO_ROUTES: Record<string, string> = {
@@ -23,7 +30,7 @@ function isTypingTarget(target: EventTarget | null) {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
 }
 
-export function KeyboardShortcuts({ isAdmin }: { isAdmin: boolean }) {
+export function KeyboardShortcuts({ role }: { role: Role }) {
   const router = useRouter()
   const awaitingGoTo = useRef(false)
 
@@ -34,7 +41,8 @@ export function KeyboardShortcuts({ isAdmin }: { isAdmin: boolean }) {
       if (awaitingGoTo.current) {
         awaitingGoTo.current = false
         const key = event.key.toLowerCase()
-        const route = COMMON_GO_TO_ROUTES[key] ?? (isAdmin ? ADMIN_GO_TO_ROUTES[key] : undefined)
+        const roleRoutes = role === 'admin' ? { ...ADMIN_GO_TO_ROUTES, ...CHECKER_GO_TO_ROUTES } : role === 'checker' ? CHECKER_GO_TO_ROUTES : {}
+        const route = COMMON_GO_TO_ROUTES[key] ?? roleRoutes[key]
         if (route) {
           event.preventDefault()
           router.push(route)
@@ -58,7 +66,7 @@ export function KeyboardShortcuts({ isAdmin }: { isAdmin: boolean }) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isAdmin, router])
+  }, [role, router])
 
   return null
 }

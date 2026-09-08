@@ -3,5 +3,7 @@ import { getCurrentUser } from '@/lib/dal'
 
 export default async function Home() {
   const user = await getCurrentUser()
-  redirect(user?.role === 'admin' ? '/cash-sheets' : '/my-entries')
+  if (user?.role === 'admin') redirect('/cash-sheets')
+  if (user?.role === 'checker') redirect('/approvals')
+  redirect('/my-entries')
 }

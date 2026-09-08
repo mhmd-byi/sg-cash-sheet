@@ -1,10 +1,12 @@
 import 'server-only'
 import mongoose from 'mongoose'
-import { verifySession, requireAdmin } from '@/lib/dal'
+import { verifySession, requireAdmin, requireCheckerOrAdmin } from '@/lib/dal'
 import { connectDB } from '@/lib/db'
 import { isWithinEntryWindow, ENTRY_BACKDATE_WINDOW_DAYS } from '@/lib/date'
 import { DEFAULT_PAGE_SIZE, toPaginated, type Paginated } from '@/lib/pagination'
+import { createNotification } from '@/lib/notifications'
 import { CashSheet, type CashSheetRow } from '@/models/CashSheet'
+import { User } from '@/models/User'
 
 export interface CashSheetListItem {
   date: string
@@ -22,6 +24,7 @@ export interface CashSheetRowDTO {
   amount: number
   remark: string
   enteredByName: string
+  status: 'pending' | 'approved' | 'rejected'
 }
 
 export interface CashSheetDetail {
@@ -81,6 +84,7 @@ function toRowDTO(row: PopulatedRow): CashSheetRowDTO {
     amount: row.amount,
     remark: row.remark,
     enteredByName: row.enteredBy?.name ?? 'Unknown',
+    status: row.status,
   }
 }
 
@@ -149,6 +153,11 @@ export async function saveCashSheet(input: SaveCashSheetInput) {
         amount: row.amount,
         remark: row.remark,
         enteredBy: match ? match.enteredBy : admin.id,
+        // A brand-new row typed directly into the admin editor is admin-authored, so it bypasses
+        // review entirely; a matched row keeps whatever review state it already had.
+        status: match ? match.status : 'approved',
+        reviewedBy: match ? match.reviewedBy : admin.id,
+        reviewedAt: match ? match.reviewedAt : new Date(),
       }
     })
   }
@@ -175,13 +184,18 @@ export interface MyEntryRow {
   particular: string
   amount: number
   remark: string
+  status: 'pending' | 'approved' | 'rejected'
+}
+
+interface AggregatedMyEntry extends Omit<MyEntryRow, 'status'> {
+  status: 'pending' | 'approved' | 'rejected' | null
 }
 
 export async function getMyEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<MyEntryRow>> {
   const session = await verifySession()
   await connectDB()
 
-  const [result] = await CashSheet.aggregate<{ data: MyEntryRow[]; total: { count: number }[] }>([
+  const [result] = await CashSheet.aggregate<{ data: AggregatedMyEntry[]; total: { count: number }[] }>([
     {
       $project: {
         date: 1,
@@ -191,14 +205,28 @@ export async function getMyEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Prom
               $map: {
                 input: '$receipts',
                 as: 'r',
-                in: { type: 'receipt', particular: '$$r.particular', amount: '$$r.amount', remark: '$$r.remark', enteredBy: '$$r.enteredBy' },
+                in: {
+                  type: 'receipt',
+                  particular: '$$r.particular',
+                  amount: '$$r.amount',
+                  remark: '$$r.remark',
+                  enteredBy: '$$r.enteredBy',
+                  status: '$$r.status',
+                },
               },
             },
             {
               $map: {
                 input: '$payments',
                 as: 'p',
-                in: { type: 'payment', particular: '$$p.particular', amount: '$$p.amount', remark: '$$p.remark', enteredBy: '$$p.enteredBy' },
+                in: {
+                  type: 'payment',
+                  particular: '$$p.particular',
+                  amount: '$$p.amount',
+                  remark: '$$p.remark',
+                  enteredBy: '$$p.enteredBy',
+                  status: '$$p.status',
+                },
               },
             },
           ],
@@ -221,6 +249,7 @@ export async function getMyEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Prom
               particular: '$rows.particular',
               amount: '$rows.amount',
               remark: '$rows.remark',
+              status: '$rows.status',
             },
           },
         ],
@@ -229,7 +258,8 @@ export async function getMyEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Prom
     },
   ])
 
-  return toPaginated(result?.data ?? [], result?.total[0]?.count ?? 0, page, pageSize)
+  const rows = (result?.data ?? []).map((row) => ({ ...row, status: row.status ?? 'approved' }))
+  return toPaginated(rows, result?.total[0]?.count ?? 0, page, pageSize)
 }
 
 export interface AddMyEntryRowInput {
@@ -251,11 +281,17 @@ export async function addMyEntries(input: AddMyEntriesInput) {
   }
   await connectDB()
 
+  const actingUser = await User.findById(session.userId).select('role')
+  const status = actingUser?.role === 'admin' ? 'approved' : 'pending'
+
   const toRow = (entry: AddMyEntryRowInput): Omit<CashSheetRow, '_id'> => ({
     particular: entry.particular,
     amount: entry.amount,
     remark: entry.remark,
     enteredBy: new mongoose.Types.ObjectId(session.userId),
+    status,
+    reviewedBy: status === 'approved' ? new mongoose.Types.ObjectId(session.userId) : null,
+    reviewedAt: status === 'approved' ? new Date() : null,
   })
 
   const receiptRows = input.entries.filter((e) => e.type === 'receipt').map(toRow)
@@ -286,23 +322,16 @@ export interface AllEntryRow {
   amount: number
   remark: string
   enteredByName: string
+  status: 'pending' | 'approved' | 'rejected'
 }
 
-interface AggregatedAllEntry {
-  id: string
-  date: string
-  type: 'receipt' | 'payment'
-  particular: string
-  amount: number
-  remark: string
+interface AggregatedAllEntry extends Omit<AllEntryRow, 'enteredByName' | 'status'> {
   enteredByName: string | null
+  status: 'pending' | 'approved' | 'rejected' | null
 }
 
-export async function getAllEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<AllEntryRow>> {
-  await requireAdmin()
-  await connectDB()
-
-  const [result] = await CashSheet.aggregate<{ data: AggregatedAllEntry[]; total: { count: number }[] }>([
+function entryRowsPipeline() {
+  return [
     {
       $project: {
         date: 1,
@@ -312,14 +341,30 @@ export async function getAllEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Pro
               $map: {
                 input: '$receipts',
                 as: 'r',
-                in: { _id: '$$r._id', type: 'receipt', particular: '$$r.particular', amount: '$$r.amount', remark: '$$r.remark', enteredBy: '$$r.enteredBy' },
+                in: {
+                  _id: '$$r._id',
+                  type: 'receipt',
+                  particular: '$$r.particular',
+                  amount: '$$r.amount',
+                  remark: '$$r.remark',
+                  enteredBy: '$$r.enteredBy',
+                  status: '$$r.status',
+                },
               },
             },
             {
               $map: {
                 input: '$payments',
                 as: 'p',
-                in: { _id: '$$p._id', type: 'payment', particular: '$$p.particular', amount: '$$p.amount', remark: '$$p.remark', enteredBy: '$$p.enteredBy' },
+                in: {
+                  _id: '$$p._id',
+                  type: 'payment',
+                  particular: '$$p.particular',
+                  amount: '$$p.amount',
+                  remark: '$$p.remark',
+                  enteredBy: '$$p.enteredBy',
+                  status: '$$p.status',
+                },
               },
             },
           ],
@@ -327,6 +372,71 @@ export async function getAllEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Pro
       },
     },
     { $unwind: '$rows' },
+  ]
+}
+
+export async function getAllEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<AllEntryRow>> {
+  await requireAdmin()
+  await connectDB()
+
+  const [result] = await CashSheet.aggregate<{ data: AggregatedAllEntry[]; total: { count: number }[] }>([
+    ...entryRowsPipeline(),
+    { $sort: { date: -1 } },
+    {
+      $facet: {
+        data: [
+          { $skip: (page - 1) * pageSize },
+          { $limit: pageSize },
+          { $lookup: { from: 'users', localField: 'rows.enteredBy', foreignField: '_id', as: 'enteredByUser' } },
+          { $unwind: { path: '$enteredByUser', preserveNullAndEmptyArrays: true } },
+          {
+            $project: {
+              _id: 0,
+              id: { $toString: '$rows._id' },
+              date: 1,
+              type: '$rows.type',
+              particular: '$rows.particular',
+              amount: '$rows.amount',
+              remark: '$rows.remark',
+              enteredByName: '$enteredByUser.name',
+              status: '$rows.status',
+            },
+          },
+        ],
+        total: [{ $count: 'count' }],
+      },
+    },
+  ])
+
+  const rows = (result?.data ?? []).map((row) => ({
+    ...row,
+    enteredByName: row.enteredByName ?? 'Unknown',
+    status: row.status ?? ('approved' as const),
+  }))
+  return toPaginated(rows, result?.total[0]?.count ?? 0, page, pageSize)
+}
+
+export interface PendingEntryRow {
+  id: string
+  date: string
+  type: 'receipt' | 'payment'
+  particular: string
+  amount: number
+  remark: string
+  enteredByName: string
+}
+
+interface AggregatedPendingEntry extends Omit<PendingEntryRow, 'enteredByName'> {
+  enteredByName: string | null
+}
+
+export async function getPendingEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<PendingEntryRow>> {
+  await requireCheckerOrAdmin()
+  await connectDB()
+
+  const [result] = await CashSheet.aggregate<{ data: AggregatedPendingEntry[]; total: { count: number }[] }>([
+    ...entryRowsPipeline(),
+    { $match: { 'rows.status': 'pending' } },
     { $sort: { date: -1 } },
     {
       $facet: {
@@ -380,6 +490,9 @@ export async function updateEntry(date: string, id: string, input: UpdateEntryIn
     amount: input.amount,
     remark: input.remark,
     enteredBy: existing.enteredBy,
+    status: existing.status,
+    reviewedBy: existing.reviewedBy,
+    reviewedAt: existing.reviewedAt,
   }
 
   await CashSheet.updateOne({ date }, { $pull: { receipts: { _id: id }, payments: { _id: id } } })
@@ -394,6 +507,45 @@ export async function deleteEntry(date: string, id: string) {
     { date },
     { $pull: { receipts: { _id: id }, payments: { _id: id } }, $set: { updatedBy: admin.id } },
   )
+}
+
+async function setEntryReviewStatus(date: string, id: string, status: 'approved' | 'rejected') {
+  const checker = await requireCheckerOrAdmin()
+  await connectDB()
+
+  const sheet = await CashSheet.findOne({ date })
+  if (!sheet) throw new Error('Entry not found.')
+  const receiptMatch = sheet.receipts.find((row) => row._id.toString() === id)
+  const row = receiptMatch ?? sheet.payments.find((row) => row._id.toString() === id)
+  if (!row) throw new Error('Entry not found.')
+
+  const field = receiptMatch ? 'receipts' : 'payments'
+  const reviewedAt = new Date()
+  await CashSheet.updateOne(
+    { date, [`${field}._id`]: id },
+    {
+      $set: {
+        [`${field}.$.status`]: status,
+        [`${field}.$.reviewedBy`]: checker.id,
+        [`${field}.$.reviewedAt`]: reviewedAt,
+      },
+    },
+  )
+
+  const type = receiptMatch ? 'receipt' : 'payment'
+  await createNotification(
+    row.enteredBy.toString(),
+    `Your ${type} of ₹${row.amount} ("${row.particular}") on ${date} was ${status} by ${checker.name}.`,
+    '/my-entries',
+  )
+}
+
+export async function approveEntry(date: string, id: string) {
+  await setEntryReviewStatus(date, id, 'approved')
+}
+
+export async function rejectEntry(date: string, id: string) {
+  await setEntryReviewStatus(date, id, 'rejected')
 }
 
 export async function getDistinctParticulars(): Promise<string[]> {

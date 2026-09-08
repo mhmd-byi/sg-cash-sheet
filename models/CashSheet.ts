@@ -6,6 +6,9 @@ export interface CashSheetRow {
   amount: number
   remark: string
   enteredBy: mongoose.Types.ObjectId
+  status: 'pending' | 'approved' | 'rejected'
+  reviewedBy: mongoose.Types.ObjectId | null
+  reviewedAt: Date | null
 }
 
 export interface CashSheetBase {
@@ -35,6 +38,12 @@ const RowSchema = new Schema<CashSheetRow>({
   amount: { type: Number, required: true, min: 0 },
   remark: { type: String, trim: true, default: '' },
   enteredBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  // Every write path sets `status` explicitly (pending for a maker, approved for admin) - this
+  // default only ever applies when Mongoose hydrates a pre-existing row saved before this field
+  // existed, so it must read as 'approved' or historical totals would silently drop to zero.
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
+  reviewedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+  reviewedAt: { type: Date, default: null },
 })
 
 const CashSheetSchema = new Schema<CashSheetBase, CashSheetModel, object, object, CashSheetVirtuals>(
@@ -50,12 +59,16 @@ const CashSheetSchema = new Schema<CashSheetBase, CashSheetModel, object, object
   { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } },
 )
 
+function isApprovedRow(row: CashSheetRow) {
+  return (row.status ?? 'approved') === 'approved'
+}
+
 CashSheetSchema.virtual('totalReceipts').get(function (this: CashSheetDocument) {
-  return this.receipts.reduce((sum, row) => sum + row.amount, 0)
+  return this.receipts.filter(isApprovedRow).reduce((sum, row) => sum + row.amount, 0)
 })
 
 CashSheetSchema.virtual('totalPayments').get(function (this: CashSheetDocument) {
-  return this.payments.reduce((sum, row) => sum + row.amount, 0)
+  return this.payments.filter(isApprovedRow).reduce((sum, row) => sum + row.amount, 0)
 })
 
 CashSheetSchema.virtual('closingBalance').get(function (this: CashSheetDocument) {

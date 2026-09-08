@@ -1,8 +1,6 @@
 import { ArrowUp, ArrowDown } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-
-const STATUS_GOOD = '#0ca30c'
-const STATUS_CRITICAL = '#d03b3b'
+import { STATUS_GOOD, STATUS_CRITICAL } from '../status-colors'
 
 export function StatTile({
   label,

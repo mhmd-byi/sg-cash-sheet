@@ -1,5 +1,6 @@
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { formatINR } from '@/lib/currency'
+import { StatusBadge } from '@/app/(app)/status-badge'
 import type { MyEntryRow } from '@/lib/cash-sheets'
 
 export function EntriesTable({ data }: { data: MyEntryRow[] }) {
@@ -16,6 +17,7 @@ export function EntriesTable({ data }: { data: MyEntryRow[] }) {
           <TableHead>Particular</TableHead>
           <TableHead>Amount</TableHead>
           <TableHead>Remark</TableHead>
+          <TableHead>Status</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -26,6 +28,9 @@ export function EntriesTable({ data }: { data: MyEntryRow[] }) {
             <TableCell>{entry.particular}</TableCell>
             <TableCell>{formatINR(entry.amount)}</TableCell>
             <TableCell>{entry.remark}</TableCell>
+            <TableCell>
+              <StatusBadge status={entry.status} />
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
