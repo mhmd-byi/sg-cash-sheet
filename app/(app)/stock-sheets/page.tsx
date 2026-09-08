@@ -6,6 +6,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { DateJumpForm } from '../date-jump-form'
 import { PaginationControls } from '../pagination-controls'
+import { DeleteStockSheetButton } from './delete-stock-sheet-button'
 
 export default async function StockSheetsPage({
   searchParams,
@@ -40,6 +41,7 @@ export default async function StockSheetsPage({
               <TableHead>Date</TableHead>
               <TableHead>Transfers Logged</TableHead>
               <TableHead>Saved By</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -52,6 +54,9 @@ export default async function StockSheetsPage({
                 </TableCell>
                 <TableCell>{sheet.transferCount}</TableCell>
                 <TableCell>{sheet.updatedByName}</TableCell>
+                <TableCell>
+                  <DeleteStockSheetButton date={sheet.date} />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

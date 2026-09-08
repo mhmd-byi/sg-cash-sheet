@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { saveCashSheet as saveCashSheetDAL } from '@/lib/cash-sheets'
+import { saveCashSheet as saveCashSheetDAL, deleteCashSheet as deleteCashSheetDAL } from '@/lib/cash-sheets'
 
 const RowSchema = z.object({
   id: z.string().optional(),
@@ -46,6 +46,24 @@ export async function saveCashSheet(date: string, input: unknown): Promise<SaveC
 
   await saveCashSheetDAL(clean)
   revalidatePath('/cash-sheets')
+  revalidatePath(`/cash-sheets/${date}`)
+  return { success: true }
+}
+
+export interface DeleteCashSheetResult {
+  success: boolean
+  error?: string
+}
+
+export async function deleteCashSheet(date: string): Promise<DeleteCashSheetResult> {
+  try {
+    await deleteCashSheetDAL(date)
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to delete sheet.' }
+  }
+
+  revalidatePath('/cash-sheets')
+  revalidatePath('/cash-sheets/entries')
   revalidatePath(`/cash-sheets/${date}`)
   return { success: true }
 }

@@ -40,6 +40,13 @@ export async function getStockSheetsList(
   return toPaginated(rows, total, page, pageSize)
 }
 
+export async function deleteStockSheet(date: string) {
+  await requireAdmin()
+  await connectDB()
+
+  await StockSheet.deleteOne({ date })
+}
+
 export async function getPreviousStockCounts(beforeDate: string): Promise<Map<string, { box: number; pcs: number }>> {
   await requireAdmin()
   await connectDB()

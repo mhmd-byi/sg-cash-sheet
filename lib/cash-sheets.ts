@@ -65,6 +65,13 @@ export async function getCashSheetsList(
   return toPaginated(rows, total, page, pageSize)
 }
 
+export async function deleteCashSheet(date: string) {
+  await requireAdmin()
+  await connectDB()
+
+  await CashSheet.deleteOne({ date })
+}
+
 type PopulatedRow = Omit<CashSheetRow, 'enteredBy'> & { enteredBy: { name: string } | null }
 
 function toRowDTO(row: PopulatedRow): CashSheetRowDTO {

@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { saveStockSheet as saveStockSheetDAL } from '@/lib/stock-sheets'
+import { saveStockSheet as saveStockSheetDAL, deleteStockSheet as deleteStockSheetDAL } from '@/lib/stock-sheets'
 
 const ItemCountSchema = z.object({
   itemId: z.string().min(1),
@@ -50,6 +50,24 @@ export async function saveStockSheet(date: string, input: unknown): Promise<Save
 
   await saveStockSheetDAL(clean)
   revalidatePath('/stock-sheets')
+  revalidatePath(`/stock-sheets/${date}`)
+  return { success: true }
+}
+
+export interface DeleteStockSheetResult {
+  success: boolean
+  error?: string
+}
+
+export async function deleteStockSheet(date: string): Promise<DeleteStockSheetResult> {
+  try {
+    await deleteStockSheetDAL(date)
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to delete sheet.' }
+  }
+
+  revalidatePath('/stock-sheets')
+  revalidatePath('/stock-sheets/entries')
   revalidatePath(`/stock-sheets/${date}`)
   return { success: true }
 }
