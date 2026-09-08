@@ -61,6 +61,12 @@ export function KeyboardShortcuts({ role }: { role: Role }) {
       if (event.key === '?') {
         event.preventDefault()
         router.push('/shortcuts')
+        return
+      }
+
+      if (event.key === '/') {
+        event.preventDefault()
+        document.getElementById('global-search-input')?.focus()
       }
     }
 

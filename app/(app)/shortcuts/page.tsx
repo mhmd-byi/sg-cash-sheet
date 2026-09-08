@@ -25,6 +25,7 @@ export default async function ShortcutsPage() {
           { keys: 'G then U', description: 'Go to Users' },
         ]
       : []),
+    { keys: '/', description: 'Focus the search bar' },
     { keys: '?', description: 'Open this help page' },
   ]
 

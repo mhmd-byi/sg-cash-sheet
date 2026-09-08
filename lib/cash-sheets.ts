@@ -5,8 +5,16 @@ import { connectDB } from '@/lib/db'
 import { isWithinEntryWindow, ENTRY_BACKDATE_WINDOW_DAYS } from '@/lib/date'
 import { DEFAULT_PAGE_SIZE, toPaginated, type Paginated } from '@/lib/pagination'
 import { createNotification } from '@/lib/notifications'
+import { escapeRegex } from '@/lib/search'
 import { CashSheet, type CashSheetRow } from '@/models/CashSheet'
 import { User } from '@/models/User'
+
+function entrySearchMatchStage(search?: string) {
+  const trimmed = search?.trim()
+  if (!trimmed) return []
+  const regex = { $regex: escapeRegex(trimmed), $options: 'i' }
+  return [{ $match: { $or: [{ 'rows.particular': regex }, { 'rows.remark': regex }] } }]
+}
 
 export interface CashSheetListItem {
   date: string
@@ -191,7 +199,11 @@ interface AggregatedMyEntry extends Omit<MyEntryRow, 'status'> {
   status: 'pending' | 'approved' | 'rejected' | null
 }
 
-export async function getMyEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<MyEntryRow>> {
+export async function getMyEntries(
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+  search?: string,
+): Promise<Paginated<MyEntryRow>> {
   const session = await verifySession()
   await connectDB()
 
@@ -235,6 +247,7 @@ export async function getMyEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Prom
     },
     { $unwind: '$rows' },
     { $match: { 'rows.enteredBy': new mongoose.Types.ObjectId(session.userId) } },
+    ...entrySearchMatchStage(search),
     { $sort: { date: -1 } },
     {
       $facet: {
@@ -375,12 +388,17 @@ function entryRowsPipeline() {
   ]
 }
 
-export async function getAllEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<AllEntryRow>> {
+export async function getAllEntries(
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+  search?: string,
+): Promise<Paginated<AllEntryRow>> {
   await requireAdmin()
   await connectDB()
 
   const [result] = await CashSheet.aggregate<{ data: AggregatedAllEntry[]; total: { count: number }[] }>([
     ...entryRowsPipeline(),
+    ...entrySearchMatchStage(search),
     { $sort: { date: -1 } },
     {
       $facet: {
@@ -430,13 +448,18 @@ interface AggregatedPendingEntry extends Omit<PendingEntryRow, 'enteredByName'> 
   enteredByName: string | null
 }
 
-export async function getPendingEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<PendingEntryRow>> {
+export async function getPendingEntries(
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+  search?: string,
+): Promise<Paginated<PendingEntryRow>> {
   await requireCheckerOrAdmin()
   await connectDB()
 
   const [result] = await CashSheet.aggregate<{ data: AggregatedPendingEntry[]; total: { count: number }[] }>([
     ...entryRowsPipeline(),
     { $match: { 'rows.status': 'pending' } },
+    ...entrySearchMatchStage(search),
     { $sort: { date: -1 } },
     {
       $facet: {

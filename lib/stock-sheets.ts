@@ -5,9 +5,31 @@ import { connectDB } from '@/lib/db'
 import { isWithinEntryWindow, ENTRY_BACKDATE_WINDOW_DAYS } from '@/lib/date'
 import { DEFAULT_PAGE_SIZE, toPaginated, type Paginated } from '@/lib/pagination'
 import { createNotification } from '@/lib/notifications'
+import { escapeRegex } from '@/lib/search'
 import { StockSheet, type StockTransferRow } from '@/models/StockSheet'
 import { StockItem } from '@/models/StockItem'
 import { User } from '@/models/User'
+
+async function transferSearchMatchStage(search?: string) {
+  const trimmed = search?.trim()
+  if (!trimmed) return []
+
+  const regex = { $regex: escapeRegex(trimmed), $options: 'i' }
+  const matchingItems = await StockItem.find({ name: regex }).select('_id').lean()
+  const itemIds = matchingItems.map((item) => item._id)
+
+  return [
+    {
+      $match: {
+        $or: [
+          { 'transfers.particulars': regex },
+          { 'transfers.remark': regex },
+          { 'transfers.itemId': { $in: itemIds } },
+        ],
+      },
+    },
+  ]
+}
 
 export interface StockSheetListItem {
   date: string
@@ -267,13 +289,18 @@ interface AggregatedStockEntry {
   status: 'pending' | 'approved' | 'rejected' | undefined
 }
 
-export async function getMyStockEntries(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise<Paginated<MyStockEntryRow>> {
+export async function getMyStockEntries(
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+  search?: string,
+): Promise<Paginated<MyStockEntryRow>> {
   const session = await verifySession()
   await connectDB()
 
   const [result] = await StockSheet.aggregate<{ data: AggregatedStockEntry[]; total: { count: number }[] }>([
     { $unwind: '$transfers' },
     { $match: { 'transfers.enteredBy': new mongoose.Types.ObjectId(session.userId) } },
+    ...(await transferSearchMatchStage(search)),
     { $sort: { date: -1 } },
     {
       $facet: {
@@ -394,12 +421,14 @@ interface AggregatedAllStockEntry {
 export async function getAllStockEntries(
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
+  search?: string,
 ): Promise<Paginated<AllStockEntryRow>> {
   await requireAdmin()
   await connectDB()
 
   const [result] = await StockSheet.aggregate<{ data: AggregatedAllStockEntry[]; total: { count: number }[] }>([
     { $unwind: '$transfers' },
+    ...(await transferSearchMatchStage(search)),
     { $sort: { date: -1 } },
     {
       $facet: {
@@ -477,6 +506,7 @@ interface AggregatedPendingStockEntry {
 export async function getPendingStockEntries(
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
+  search?: string,
 ): Promise<Paginated<PendingStockEntryRow>> {
   await requireCheckerOrAdmin()
   await connectDB()
@@ -484,6 +514,7 @@ export async function getPendingStockEntries(
   const [result] = await StockSheet.aggregate<{ data: AggregatedPendingStockEntry[]; total: { count: number }[] }>([
     { $unwind: '$transfers' },
     { $match: { 'transfers.status': 'pending' } },
+    ...(await transferSearchMatchStage(search)),
     { $sort: { date: -1 } },
     {
       $facet: {

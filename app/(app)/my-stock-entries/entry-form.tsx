@@ -4,6 +4,7 @@ import { useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useForm } from '@tanstack/react-form'
+import { X } from 'lucide-react'
 import { addStockEntries } from './actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -208,7 +209,7 @@ export function EntryForm({
                     onClick={() => field.removeValue(i)}
                     disabled={field.state.value.length === 1}
                   >
-                    ✕
+                    <X />
                   </Button>
                 </div>
               ))}

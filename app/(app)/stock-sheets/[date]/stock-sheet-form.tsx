@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useForm } from '@tanstack/react-form'
+import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -323,7 +324,7 @@ export function StockSheetForm({
                       </span>
                     </Field>
                     <Button type="button" variant="ghost" size="icon" onClick={() => field.removeValue(i)}>
-                      ✕
+                      <X />
                     </Button>
                   </div>
                 ))}

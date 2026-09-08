@@ -1,14 +1,16 @@
 import Link from 'next/link'
+import { Bell } from 'lucide-react'
 
 export function NotificationBell({ unreadCount }: { unreadCount: number }) {
   return (
     <Link
       href="/notifications"
-      className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+      aria-label="Notifications"
+      className="relative flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/50 hover:text-foreground"
     >
-      <span>🔔 Notifications</span>
+      <Bell className="size-5" />
       {unreadCount > 0 && (
-        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-xs font-medium text-white">
+        <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-white">
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}
