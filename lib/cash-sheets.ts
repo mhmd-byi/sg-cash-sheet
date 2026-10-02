@@ -97,7 +97,9 @@ function toRowDTO(row: PopulatedRow): CashSheetRowDTO {
 }
 
 export async function getCashSheetByDate(date: string): Promise<CashSheetDetail | null> {
-  await requireAdmin()
+  // Readable by any logged-in role (maker/checker need to see a day's full sheet to tally it
+  // against admin's edits); write access (saveCashSheet, delete, approve/reject) stays admin/checker-gated.
+  await verifySession()
   await connectDB()
 
   const sheet = await CashSheet.findOne({ date })
@@ -124,7 +126,7 @@ async function findPreviousClosingBalance(beforeDate: string): Promise<number | 
 }
 
 export async function getPreviousClosingBalance(beforeDate: string): Promise<number | null> {
-  await requireAdmin()
+  await verifySession()
   await connectDB()
 
   return findPreviousClosingBalance(beforeDate)
