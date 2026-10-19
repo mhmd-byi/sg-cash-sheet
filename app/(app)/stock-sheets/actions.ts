@@ -2,7 +2,11 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { saveStockSheet as saveStockSheetDAL, deleteStockSheet as deleteStockSheetDAL } from '@/lib/stock-sheets'
+import {
+  saveStockSheet as saveStockSheetDAL,
+  deleteStockSheet as deleteStockSheetDAL,
+  updateStockSheetKeyNote as updateStockSheetKeyNoteDAL,
+} from '@/lib/stock-sheets'
 
 const ItemCountSchema = z.object({
   itemId: z.string().min(1),
@@ -30,6 +34,7 @@ const StockSheetInputSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   items: z.array(ItemCountSchema),
   transfers: z.array(TransferSchema),
+  keyNote: z.string().trim().optional().default(''),
 })
 
 export interface SaveStockSheetResult {
@@ -68,6 +73,17 @@ export async function deleteStockSheet(date: string): Promise<DeleteStockSheetRe
 
   revalidatePath('/stock-sheets')
   revalidatePath('/stock-sheets/entries')
+  revalidatePath(`/stock-sheets/${date}`)
+  return { success: true }
+}
+
+export async function updateStockSheetKeyNote(date: string, keyNote: string): Promise<SaveStockSheetResult> {
+  try {
+    await updateStockSheetKeyNoteDAL(date, keyNote.trim())
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to save key note.' }
+  }
+
   revalidatePath(`/stock-sheets/${date}`)
   return { success: true }
 }

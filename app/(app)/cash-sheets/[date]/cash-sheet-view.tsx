@@ -2,6 +2,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { formatINR } from '@/lib/currency'
 import { StatusBadge } from '@/app/(app)/status-badge'
+import { KeyNoteEditor } from '@/app/(app)/key-note-editor'
 import type { CashSheetDetail, CashSheetRowDTO } from '@/lib/cash-sheets'
 
 function Totals({ label, value, emphasize }: { label: string; value: number; emphasize?: boolean }) {
@@ -93,6 +94,8 @@ export function CashSheetView({
           </div>
         </CardContent>
       </Card>
+
+      <KeyNoteEditor date={date} kind="cash" initialValue={data?.keyNote ?? ''} />
 
       <div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2">
         <RowsTable rows={data?.receipts ?? []} title="Receipts" />

@@ -2,7 +2,11 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { saveCashSheet as saveCashSheetDAL, deleteCashSheet as deleteCashSheetDAL } from '@/lib/cash-sheets'
+import {
+  saveCashSheet as saveCashSheetDAL,
+  deleteCashSheet as deleteCashSheetDAL,
+  updateCashSheetKeyNote as updateCashSheetKeyNoteDAL,
+} from '@/lib/cash-sheets'
 
 const RowSchema = z.object({
   id: z.string().optional(),
@@ -16,6 +20,7 @@ const CashSheetInputSchema = z
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     openingBalance: z.coerce.number(),
     actualClosingCash: z.number().nullable(),
+    keyNote: z.string().trim().optional().default(''),
     receipts: z.array(RowSchema),
     payments: z.array(RowSchema),
   })
@@ -64,6 +69,17 @@ export async function deleteCashSheet(date: string): Promise<DeleteCashSheetResu
 
   revalidatePath('/cash-sheets')
   revalidatePath('/cash-sheets/entries')
+  revalidatePath(`/cash-sheets/${date}`)
+  return { success: true }
+}
+
+export async function updateCashSheetKeyNote(date: string, keyNote: string): Promise<SaveCashSheetResult> {
+  try {
+    await updateCashSheetKeyNoteDAL(date, keyNote.trim())
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to save key note.' }
+  }
+
   revalidatePath(`/cash-sheets/${date}`)
   return { success: true }
 }

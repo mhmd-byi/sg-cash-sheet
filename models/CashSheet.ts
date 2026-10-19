@@ -15,6 +15,7 @@ export interface CashSheetBase {
   date: string
   openingBalance: number
   actualClosingCash: number | null
+  keyNote: string
   receipts: CashSheetRow[]
   payments: CashSheetRow[]
   createdBy: mongoose.Types.ObjectId
@@ -51,6 +52,7 @@ const CashSheetSchema = new Schema<CashSheetBase, CashSheetModel, object, object
     date: { type: String, required: true, unique: true, match: /^\d{4}-\d{2}-\d{2}$/ },
     openingBalance: { type: Number, required: true, default: 0 },
     actualClosingCash: { type: Number, default: null },
+    keyNote: { type: String, trim: true, default: '' },
     receipts: { type: [RowSchema], default: [] },
     payments: { type: [RowSchema], default: [] },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },

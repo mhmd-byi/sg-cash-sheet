@@ -1,6 +1,10 @@
+import Link from 'next/link'
 import { getPendingStockEntries } from '@/lib/stock-sheets'
 import { parsePage, parsePageSize } from '@/lib/pagination'
+import { getTodayDateString } from '@/lib/date'
+import { buttonVariants } from '@/components/ui/button'
 import { PaginationControls } from '../../pagination-controls'
+import { DateJumpForm } from '../../date-jump-form'
 import { ApprovalsTabs } from '../approvals-tabs'
 import { StockApprovalsTable } from './stock-approvals-table'
 
@@ -18,7 +22,13 @@ export default async function StockApprovalsPage({
     <div className="flex flex-1 flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-lg font-medium">Approvals</h1>
-        <ApprovalsTabs current="stock" />
+        <div className="flex flex-wrap items-end gap-2">
+          <DateJumpForm basePath="/stock-sheets" />
+          <Link href={`/stock-sheets/${getTodayDateString()}`} className={buttonVariants({ variant: 'outline' })}>
+            Today&apos;s Stock Sheet
+          </Link>
+          <ApprovalsTabs current="stock" />
+        </div>
       </div>
       <StockApprovalsTable data={entries} />
       <PaginationControls basePath="/approvals/stock" page={page} pageSize={pageSize} totalPages={totalPages} />

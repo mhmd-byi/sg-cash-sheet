@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Field, FieldLabel } from '@/components/ui/field'
+import { Textarea } from '@/components/ui/textarea'
 import { formatINR } from '@/lib/currency'
 import { saveCashSheet } from '../actions'
 import { NumberFieldInput } from '@/app/(app)/number-field-input'
@@ -18,6 +19,7 @@ type FormRow = Omit<CashSheetRowDTO, 'id' | 'enteredByName' | 'status'> & Partia
 interface CashSheetFormValues {
   openingBalance: number
   actualClosingCash: number | null
+  keyNote: string
   receipts: FormRow[]
   payments: FormRow[]
 }
@@ -43,6 +45,7 @@ export function CashSheetForm({
     defaultValues: {
       openingBalance: initialData?.openingBalance ?? defaultOpeningBalance,
       actualClosingCash: initialData?.actualClosingCash ?? null,
+      keyNote: initialData?.keyNote ?? '',
       receipts: initialData?.receipts ?? [],
       payments: initialData?.payments ?? [],
     } as CashSheetFormValues,
@@ -191,6 +194,21 @@ export function CashSheetForm({
           </form.Field>
         </div>
       </div>
+
+      <form.Field name="keyNote">
+        {(field) => (
+          <Field>
+            <FieldLabel htmlFor="keyNote">Key Note</FieldLabel>
+            <Textarea
+              id="keyNote"
+              rows={2}
+              placeholder="Add a note for this day…"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+            />
+          </Field>
+        )}
+      </form.Field>
 
       <div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2">
         {renderRows('receipts', 'Receipts')}

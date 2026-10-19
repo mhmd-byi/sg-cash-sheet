@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Field, FieldLabel } from '@/components/ui/field'
+import { Textarea } from '@/components/ui/textarea'
 import { saveStockSheet } from '../actions'
 import { NumberFieldInput } from '@/app/(app)/number-field-input'
 import type { StockSheetDetail } from '@/lib/stock-sheets'
@@ -41,6 +42,7 @@ interface TransferFormRow {
 interface StockSheetFormValues {
   items: StockItemFormRow[]
   transfers: TransferFormRow[]
+  keyNote: string
 }
 
 function emptyTransfer(): TransferFormRow {
@@ -84,6 +86,7 @@ export function StockSheetForm({
         remark: row.remark,
         enteredByName: row.enteredByName,
       })),
+      keyNote: detail.keyNote,
     } as StockSheetFormValues,
     onSubmit: async ({ value }) => {
       const result = await saveStockSheet(date, value)
@@ -117,6 +120,21 @@ export function StockSheetForm({
         ))}
       </datalist>
       <h1 className="font-heading text-lg font-medium">{date}</h1>
+
+      <form.Field name="keyNote">
+        {(field) => (
+          <Field>
+            <FieldLabel htmlFor="keyNote">Key Note</FieldLabel>
+            <Textarea
+              id="keyNote"
+              rows={2}
+              placeholder="Add a note for this day…"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+            />
+          </Field>
+        )}
+      </form.Field>
 
       <div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2">
         <Card>

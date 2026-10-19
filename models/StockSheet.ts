@@ -30,6 +30,7 @@ export interface StockSheetBase {
   date: string
   items: StockItemCountRow[]
   transfers: StockTransferRow[]
+  keyNote: string
   createdBy: mongoose.Types.ObjectId
   updatedBy: mongoose.Types.ObjectId
   createdAt: Date
@@ -72,6 +73,7 @@ const StockSheetSchema = new Schema<StockSheetBase>(
     date: { type: String, required: true, unique: true, match: /^\d{4}-\d{2}-\d{2}$/ },
     items: { type: [ItemCountSchema], default: [] },
     transfers: { type: [TransferRowSchema], default: [] },
+    keyNote: { type: String, trim: true, default: '' },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },

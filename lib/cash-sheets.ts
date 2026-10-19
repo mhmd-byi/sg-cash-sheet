@@ -39,6 +39,7 @@ export interface CashSheetDetail {
   date: string
   openingBalance: number
   actualClosingCash: number | null
+  keyNote: string
   receipts: CashSheetRowDTO[]
   payments: CashSheetRowDTO[]
   totalReceipts: number
@@ -111,6 +112,7 @@ export async function getCashSheetByDate(date: string): Promise<CashSheetDetail 
     date: sheet.date,
     openingBalance: sheet.openingBalance,
     actualClosingCash: sheet.actualClosingCash,
+    keyNote: sheet.keyNote,
     receipts: sheet.receipts.map(toRowDTO),
     payments: sheet.payments.map(toRowDTO),
     totalReceipts: sheet.totalReceipts,
@@ -143,6 +145,7 @@ export interface SaveCashSheetInput {
   date: string
   openingBalance: number
   actualClosingCash: number | null
+  keyNote: string
   receipts: SaveCashSheetRowInput[]
   payments: SaveCashSheetRowInput[]
 }
@@ -178,11 +181,28 @@ export async function saveCashSheet(input: SaveCashSheetInput) {
       $set: {
         openingBalance: input.openingBalance,
         actualClosingCash: input.actualClosingCash,
+        keyNote: input.keyNote,
         receipts: mergeRows(input.receipts, existingReceiptsById),
         payments: mergeRows(input.payments, existingPaymentsById),
         updatedBy: admin.id,
       },
       $setOnInsert: { createdBy: admin.id },
+    },
+    { upsert: true, runValidators: true },
+  )
+}
+
+export async function updateCashSheetKeyNote(date: string, keyNote: string) {
+  const session = await verifySession()
+  await connectDB()
+
+  const openingBalance = (await findPreviousClosingBalance(date)) ?? 0
+
+  await CashSheet.findOneAndUpdate(
+    { date },
+    {
+      $set: { keyNote, updatedBy: session.userId },
+      $setOnInsert: { createdBy: session.userId, openingBalance },
     },
     { upsert: true, runValidators: true },
   )

@@ -1,8 +1,12 @@
+import Link from 'next/link'
 import { getMyStockEntries, getDistinctParticulars } from '@/lib/stock-sheets'
 import { getStockItemsList } from '@/lib/stock-items'
 import { parsePage, parsePageSize } from '@/lib/pagination'
+import { getTodayDateString } from '@/lib/date'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { buttonVariants } from '@/components/ui/button'
 import { PaginationControls } from '../pagination-controls'
+import { DateJumpForm } from '../date-jump-form'
 import { EntryForm } from './entry-form'
 import { EntriesTable } from './entries-table'
 
@@ -22,7 +26,15 @@ export default async function MyStockEntriesPage({
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <h1 className="font-heading text-lg font-medium">My Stock Entries</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-heading text-lg font-medium">My Stock Entries</h1>
+        <div className="flex items-end gap-2">
+          <DateJumpForm basePath="/stock-sheets" />
+          <Link href={`/stock-sheets/${getTodayDateString()}`} className={buttonVariants({ variant: 'outline' })}>
+            Today&apos;s Stock Sheet
+          </Link>
+        </div>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Log receive / issue entries</CardTitle>

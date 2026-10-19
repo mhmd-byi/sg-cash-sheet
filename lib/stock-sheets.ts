@@ -72,7 +72,7 @@ export async function deleteStockSheet(date: string) {
 }
 
 export async function getPreviousStockCounts(beforeDate: string): Promise<Map<string, { box: number; pcs: number }>> {
-  await requireAdmin()
+  await verifySession()
   await connectDB()
 
   const sheet = await StockSheet.findOne({ date: { $lt: beforeDate } }).sort({ date: -1 })
@@ -119,12 +119,15 @@ export interface StockSheetDetail {
   date: string
   items: StockItemCountDTO[]
   transfers: StockTransferRowDTO[]
+  keyNote: string
 }
 
 type PopulatedTransferRow = Omit<StockTransferRow, 'enteredBy'> & { enteredBy: { name: string } | null }
 
 export async function getStockSheetByDate(date: string): Promise<StockSheetDetail> {
-  await requireAdmin()
+  // Readable by any logged-in role (maker/checker need to see a day's full sheet to tally it);
+  // write access (saveStockSheet, delete, approve/reject) stays admin/checker-gated.
+  await verifySession()
   await connectDB()
 
   const activeItems = await StockItem.find().sort({ sortOrder: 1 }).lean()
@@ -189,7 +192,7 @@ export async function getStockSheetByDate(date: string): Promise<StockSheetDetai
     status: row.status,
   }))
 
-  return { date, items, transfers }
+  return { date, items, transfers, keyNote: sheet?.keyNote ?? '' }
 }
 
 export interface SaveStockItemCountInput {
@@ -218,6 +221,7 @@ export interface SaveStockSheetInput {
   date: string
   items: SaveStockItemCountInput[]
   transfers: SaveStockTransferInput[]
+  keyNote: string
 }
 
 export async function saveStockSheet(input: SaveStockSheetInput) {
@@ -260,8 +264,22 @@ export async function saveStockSheet(input: SaveStockSheetInput) {
   await StockSheet.findOneAndUpdate(
     { date: input.date },
     {
-      $set: { items, transfers, updatedBy: admin.id },
+      $set: { items, transfers, keyNote: input.keyNote, updatedBy: admin.id },
       $setOnInsert: { createdBy: admin.id },
+    },
+    { upsert: true, runValidators: true },
+  )
+}
+
+export async function updateStockSheetKeyNote(date: string, keyNote: string) {
+  const session = await verifySession()
+  await connectDB()
+
+  await StockSheet.findOneAndUpdate(
+    { date },
+    {
+      $set: { keyNote, updatedBy: session.userId },
+      $setOnInsert: { createdBy: session.userId },
     },
     { upsert: true, runValidators: true },
   )
