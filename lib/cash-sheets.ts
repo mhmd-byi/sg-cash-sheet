@@ -122,18 +122,6 @@ export async function getCashSheetByDate(date: string): Promise<CashSheetDetail 
   }
 }
 
-async function findPreviousClosingBalance(beforeDate: string): Promise<number | null> {
-  const sheet = await CashSheet.findOne({ date: { $lt: beforeDate } }).sort({ date: -1 })
-  return sheet ? sheet.closingBalance : null
-}
-
-export async function getPreviousClosingBalance(beforeDate: string): Promise<number | null> {
-  await verifySession()
-  await connectDB()
-
-  return findPreviousClosingBalance(beforeDate)
-}
-
 export interface SaveCashSheetRowInput {
   id?: string
   particular: string
@@ -196,13 +184,13 @@ export async function updateCashSheetKeyNote(date: string, keyNote: string) {
   const session = await verifySession()
   await connectDB()
 
-  const openingBalance = (await findPreviousClosingBalance(date)) ?? 0
-
   await CashSheet.findOneAndUpdate(
     { date },
     {
       $set: { keyNote, updatedBy: session.userId },
-      $setOnInsert: { createdBy: session.userId, openingBalance },
+      // Opening balance is manual entry only (no carry-forward) - a brand-new sheet created here
+      // just takes the schema's default (0) until admin/maker types in the real figure.
+      $setOnInsert: { createdBy: session.userId },
     },
     { upsert: true, runValidators: true },
   )
@@ -336,14 +324,14 @@ export async function addMyEntries(input: AddMyEntriesInput) {
   if (receiptRows.length > 0) pushOps.receipts = { $each: receiptRows }
   if (paymentRows.length > 0) pushOps.payments = { $each: paymentRows }
 
-  const openingBalance = (await findPreviousClosingBalance(input.date)) ?? 0
-
   await CashSheet.findOneAndUpdate(
     { date: input.date },
     {
       ...(Object.keys(pushOps).length > 0 ? { $push: pushOps } : {}),
       $set: { updatedBy: session.userId },
-      $setOnInsert: { createdBy: session.userId, openingBalance },
+      // Opening balance is manual entry only (no carry-forward) - a brand-new sheet created here
+      // just takes the schema's default (0) until admin/maker types in the real figure.
+      $setOnInsert: { createdBy: session.userId },
     },
     { upsert: true, runValidators: true },
   )

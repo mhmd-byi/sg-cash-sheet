@@ -54,16 +54,8 @@ function RowsTable({ rows, title }: { rows: CashSheetRowDTO[]; title: string }) 
   )
 }
 
-export function CashSheetView({
-  date,
-  data,
-  defaultOpeningBalance,
-}: {
-  date: string
-  data: CashSheetDetail | null
-  defaultOpeningBalance: number
-}) {
-  const openingBalance = data?.openingBalance ?? defaultOpeningBalance
+export function CashSheetView({ date, data }: { date: string; data: CashSheetDetail | null }) {
+  const openingBalance = data?.openingBalance ?? 0
   const totalReceipts = data?.totalReceipts ?? 0
   const totalPayments = data?.totalPayments ?? 0
   const closingBalance = data?.closingBalance ?? openingBalance

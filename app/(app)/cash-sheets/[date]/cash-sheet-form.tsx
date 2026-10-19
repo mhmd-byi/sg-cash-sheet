@@ -31,19 +31,18 @@ function emptyRow(): FormRow {
 export function CashSheetForm({
   date,
   initialData,
-  defaultOpeningBalance,
   particularSuggestions,
 }: {
   date: string
   initialData: CashSheetDetail | null
-  defaultOpeningBalance: number
   particularSuggestions: string[]
 }) {
   const router = useRouter()
 
   const form = useForm({
     defaultValues: {
-      openingBalance: initialData?.openingBalance ?? defaultOpeningBalance,
+      // Manual entry only - never carried forward from the previous day's closing balance.
+      openingBalance: initialData?.openingBalance ?? 0,
       actualClosingCash: initialData?.actualClosingCash ?? null,
       keyNote: initialData?.keyNote ?? '',
       receipts: initialData?.receipts ?? [],
