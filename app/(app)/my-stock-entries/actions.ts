@@ -6,7 +6,7 @@ import { addMyStockEntries } from '@/lib/stock-sheets'
 
 const EntryRowSchema = z.object({
   type: z.enum(['receive', 'issue']),
-  itemId: z.string(),
+  itemName: z.string().trim(),
   particulars: z.string().trim().optional().default(''),
   qty: z.coerce.number().min(0),
   unit: z.enum(['box', 'pcs', 'grams']),
@@ -29,7 +29,7 @@ export async function addStockEntries(input: unknown): Promise<AddStockEntriesRe
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' }
   }
 
-  const entries = parsed.data.entries.filter((entry) => entry.itemId !== '' && entry.qty > 0)
+  const entries = parsed.data.entries.filter((entry) => entry.itemName !== '' && entry.qty > 0)
   if (entries.length === 0) {
     return { success: false, error: 'Add at least one entry with an item and a quantity.' }
   }

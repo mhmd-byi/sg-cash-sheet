@@ -18,7 +18,7 @@ const selectClassName =
 
 interface Draft {
   type: 'receive' | 'issue'
-  itemId: string
+  itemName: string
   particulars: string
   qty: number
   unit: 'box' | 'pcs' | 'grams'
@@ -37,7 +37,7 @@ export function EntriesTable({ data, items }: { data: AllStockEntryRow[]; items:
 
   function startEdit(row: AllStockEntryRow) {
     setEditingId(row.id)
-    setDraft({ type: row.type, itemId: row.itemId, particulars: row.particulars, qty: row.qty, unit: row.unit, remark: row.remark })
+    setDraft({ type: row.type, itemName: row.itemName, particulars: row.particulars, qty: row.qty, unit: row.unit, remark: row.remark })
   }
 
   function cancelEdit() {
@@ -73,7 +73,13 @@ export function EntriesTable({ data, items }: { data: AllStockEntryRow[]; items:
   }
 
   return (
-    <Table>
+    <>
+      <datalist id="stock-item-suggestions">
+        {items.map((item) => (
+          <option key={item.id} value={item.name} />
+        ))}
+      </datalist>
+      <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Date</TableHead>
@@ -115,17 +121,11 @@ export function EntriesTable({ data, items }: { data: AllStockEntryRow[]; items:
               </TableCell>
               <TableCell>
                 {isEditing && draft ? (
-                  <select
-                    className={selectClassName}
-                    value={draft.itemId}
-                    onChange={(e) => setDraft({ ...draft, itemId: e.target.value })}
-                  >
-                    {items.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
+                  <Input
+                    list="stock-item-suggestions"
+                    value={draft.itemName}
+                    onChange={(e) => setDraft({ ...draft, itemName: e.target.value })}
+                  />
                 ) : (
                   row.itemName
                 )}
@@ -197,6 +197,7 @@ export function EntriesTable({ data, items }: { data: AllStockEntryRow[]; items:
           )
         })}
       </TableBody>
-    </Table>
+      </Table>
+    </>
   )
 }

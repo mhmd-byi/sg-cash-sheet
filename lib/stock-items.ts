@@ -26,6 +26,22 @@ export async function getStockItemById(id: string): Promise<StockItemListItem | 
   return { id: item._id.toString(), name: item.name }
 }
 
+// Resolves a free-typed item name (from a stock entry row) to its StockItem id, creating a new
+// Stock Item on the fly if no exact name match exists yet - lets a maker log an entry for a new
+// item without waiting on admin to add it via /stock-items first.
+export async function findOrCreateStockItemByName(name: string): Promise<string> {
+  await verifySession()
+  await connectDB()
+
+  const trimmed = name.trim()
+  const existing = await StockItem.findOne({ name: trimmed })
+  if (existing) return existing._id.toString()
+
+  const count = await StockItem.countDocuments()
+  const created = await StockItem.create({ name: trimmed, sortOrder: count })
+  return created._id.toString()
+}
+
 export async function createStockItem(name: string) {
   await requireAdmin()
   await connectDB()

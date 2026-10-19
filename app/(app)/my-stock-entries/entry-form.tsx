@@ -18,7 +18,7 @@ const selectClassName =
 
 interface StockEntryRow {
   type: 'receive' | 'issue'
-  itemId: string
+  itemName: string
   particulars: string
   qty: number
   unit: 'box' | 'pcs' | 'grams'
@@ -31,7 +31,7 @@ interface StockEntriesFormValues {
 }
 
 function emptyEntry(): StockEntryRow {
-  return { type: 'receive', itemId: '', particulars: '', qty: 0, unit: 'pcs', remark: '' }
+  return { type: 'receive', itemName: '', particulars: '', qty: 0, unit: 'pcs', remark: '' }
 }
 
 export function EntryForm({
@@ -88,6 +88,11 @@ export function EntryForm({
       <datalist id="particular-suggestions">
         {particularSuggestions.map((value) => (
           <option key={value} value={value} />
+        ))}
+      </datalist>
+      <datalist id="stock-item-suggestions">
+        {items.map((item) => (
+          <option key={item.id} value={item.name} />
         ))}
       </datalist>
 
@@ -152,24 +157,16 @@ export function EntryForm({
                         </Field>
                       )}
                     </form.Field>
-                    <form.Field name={`entries[${i}].itemId`}>
+                    <form.Field name={`entries[${i}].itemName`}>
                       {(subField) => (
                         <Field>
                           {i === 0 && <FieldLabel>Item</FieldLabel>}
-                          <select
-                            className={selectClassName}
+                          <Input
+                            list="stock-item-suggestions"
+                            placeholder="Item name"
                             value={subField.state.value}
                             onChange={(e) => subField.handleChange(e.target.value)}
-                          >
-                            <option value="" disabled>
-                              Select an item
-                            </option>
-                            {items.map((item) => (
-                              <option key={item.id} value={item.id}>
-                                {item.name}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </Field>
                       )}
                     </form.Field>

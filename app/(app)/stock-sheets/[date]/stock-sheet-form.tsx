@@ -32,7 +32,7 @@ interface StockItemFormRow {
 interface TransferFormRow {
   id?: string
   type: 'receive' | 'issue'
-  itemId: string
+  itemName: string
   particulars: string
   qty: number
   unit: 'box' | 'pcs' | 'grams'
@@ -47,7 +47,7 @@ interface StockSheetFormValues {
 }
 
 function emptyTransfer(): TransferFormRow {
-  return { type: 'receive', itemId: '', particulars: '', qty: 0, unit: 'pcs', remark: '' }
+  return { type: 'receive', itemName: '', particulars: '', qty: 0, unit: 'pcs', remark: '' }
 }
 
 export function StockSheetForm({
@@ -69,7 +69,7 @@ export function StockSheetForm({
     setFocusRowIndex(null)
   }, [focusRowIndex])
 
-  const itemOptions = detail.items.map((item) => ({ id: item.itemId, name: item.itemName }))
+  const itemNames = detail.items.map((item) => item.itemName)
   const expectedPcsByItemId = new Map(detail.items.map((item) => [item.itemId, item.expectedClosingPcs]))
   const expectedBoxByItemId = new Map(detail.items.map((item) => [item.itemId, item.expectedClosingBox]))
 
@@ -89,7 +89,7 @@ export function StockSheetForm({
       transfers: detail.transfers.map((row) => ({
         id: row.id,
         type: row.type,
-        itemId: row.itemId,
+        itemName: row.itemName,
         particulars: row.particulars,
         qty: row.qty,
         unit: row.unit,
@@ -127,6 +127,11 @@ export function StockSheetForm({
       <datalist id="particular-suggestions">
         {particularSuggestions.map((value) => (
           <option key={value} value={value} />
+        ))}
+      </datalist>
+      <datalist id="stock-item-suggestions">
+        {itemNames.map((name) => (
+          <option key={name} value={name} />
         ))}
       </datalist>
       <h1 className="font-heading text-lg font-medium">{date}</h1>
@@ -307,24 +312,16 @@ export function StockSheetForm({
                         </Field>
                       )}
                     </form.Field>
-                    <form.Field name={`transfers[${i}].itemId`}>
+                    <form.Field name={`transfers[${i}].itemName`}>
                       {(subField) => (
                         <Field>
                           {i === 0 && <FieldLabel>Item</FieldLabel>}
-                          <select
-                            className={selectClassName}
+                          <Input
+                            list="stock-item-suggestions"
+                            placeholder="Item name"
                             value={subField.state.value}
                             onChange={(e) => subField.handleChange(e.target.value)}
-                          >
-                            <option value="" disabled>
-                              Select an item
-                            </option>
-                            {itemOptions.map((item) => (
-                              <option key={item.id} value={item.id}>
-                                {item.name}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </Field>
                       )}
                     </form.Field>

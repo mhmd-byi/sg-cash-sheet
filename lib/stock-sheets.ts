@@ -8,6 +8,7 @@ import { createNotification } from '@/lib/notifications'
 import { escapeRegex } from '@/lib/search'
 import { StockSheet, type StockTransferRow } from '@/models/StockSheet'
 import { StockItem } from '@/models/StockItem'
+import { findOrCreateStockItemByName } from '@/lib/stock-items'
 import { User } from '@/models/User'
 
 async function transferSearchMatchStage(search?: string) {
@@ -210,7 +211,7 @@ export interface SaveStockItemCountInput {
 export interface SaveStockTransferInput {
   id?: string
   type: 'receive' | 'issue'
-  itemId: string
+  itemName: string
   particulars: string
   qty: number
   unit: 'box' | 'pcs' | 'grams'
@@ -231,23 +232,25 @@ export async function saveStockSheet(input: SaveStockSheetInput) {
   const existing = await StockSheet.findOne({ date: input.date })
   const existingTransfersById = new Map(existing?.transfers.map((row) => [row._id.toString(), row]) ?? [])
 
-  const transfers = input.transfers.map((row) => {
-    const match = row.id ? existingTransfersById.get(row.id) : undefined
-    return {
-      type: row.type,
-      itemId: row.itemId,
-      particulars: row.particulars,
-      qty: row.qty,
-      unit: row.unit,
-      remark: row.remark,
-      enteredBy: match ? match.enteredBy : admin.id,
-      // A brand-new row typed directly into the admin editor is admin-authored, so it bypasses
-      // review entirely; a matched row keeps whatever review state it already had.
-      status: match ? match.status : 'approved',
-      reviewedBy: match ? match.reviewedBy : admin.id,
-      reviewedAt: match ? match.reviewedAt : new Date(),
-    }
-  })
+  const transfers = await Promise.all(
+    input.transfers.map(async (row) => {
+      const match = row.id ? existingTransfersById.get(row.id) : undefined
+      return {
+        type: row.type,
+        itemId: await findOrCreateStockItemByName(row.itemName),
+        particulars: row.particulars,
+        qty: row.qty,
+        unit: row.unit,
+        remark: row.remark,
+        enteredBy: match ? match.enteredBy : admin.id,
+        // A brand-new row typed directly into the admin editor is admin-authored, so it bypasses
+        // review entirely; a matched row keeps whatever review state it already had.
+        status: match ? match.status : 'approved',
+        reviewedBy: match ? match.reviewedBy : admin.id,
+        reviewedAt: match ? match.reviewedAt : new Date(),
+      }
+    }),
+  )
 
   const items = input.items.map((row) => ({
     itemId: row.itemId,
@@ -363,7 +366,7 @@ export async function getMyStockEntries(
 
 export interface AddMyStockEntryRowInput {
   type: 'receive' | 'issue'
-  itemId: string
+  itemName: string
   particulars: string
   qty: number
   unit: 'box' | 'pcs' | 'grams'
@@ -385,18 +388,20 @@ export async function addMyStockEntries(input: AddMyStockEntriesInput) {
   const actingUser = await User.findById(session.userId).select('role')
   const status = actingUser?.role === 'admin' ? 'approved' : 'pending'
 
-  const rows = input.entries.map((entry) => ({
-    type: entry.type,
-    itemId: entry.itemId,
-    particulars: entry.particulars,
-    qty: entry.qty,
-    unit: entry.unit,
-    remark: entry.remark,
-    enteredBy: session.userId,
-    status,
-    reviewedBy: status === 'approved' ? session.userId : null,
-    reviewedAt: status === 'approved' ? new Date() : null,
-  }))
+  const rows = await Promise.all(
+    input.entries.map(async (entry) => ({
+      type: entry.type,
+      itemId: await findOrCreateStockItemByName(entry.itemName),
+      particulars: entry.particulars,
+      qty: entry.qty,
+      unit: entry.unit,
+      remark: entry.remark,
+      enteredBy: session.userId,
+      status,
+      reviewedBy: status === 'approved' ? session.userId : null,
+      reviewedAt: status === 'approved' ? new Date() : null,
+    })),
+  )
 
   await StockSheet.findOneAndUpdate(
     { date: input.date },
@@ -582,7 +587,7 @@ export async function getPendingStockEntries(
 
 export interface UpdateStockEntryInput {
   type: 'receive' | 'issue'
-  itemId: string
+  itemName: string
   particulars: string
   qty: number
   unit: 'box' | 'pcs' | 'grams'
@@ -593,12 +598,14 @@ export async function updateStockEntry(date: string, id: string, input: UpdateSt
   const admin = await requireAdmin()
   await connectDB()
 
+  const itemId = await findOrCreateStockItemByName(input.itemName)
+
   const result = await StockSheet.updateOne(
     { date, 'transfers._id': id },
     {
       $set: {
         'transfers.$.type': input.type,
-        'transfers.$.itemId': input.itemId,
+        'transfers.$.itemId': itemId,
         'transfers.$.particulars': input.particulars,
         'transfers.$.qty': input.qty,
         'transfers.$.unit': input.unit,

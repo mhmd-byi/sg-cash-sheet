@@ -6,7 +6,7 @@ import { updateStockEntry as updateStockEntryDAL, deleteStockEntry as deleteStoc
 
 const UpdateStockEntrySchema = z.object({
   type: z.enum(['receive', 'issue']),
-  itemId: z.string().min(1, 'Item is required.'),
+  itemName: z.string().trim().min(1, 'Item is required.'),
   particulars: z.string().trim().optional().default(''),
   qty: z.coerce.number().positive('Quantity must be greater than zero.'),
   unit: z.enum(['box', 'pcs', 'grams']),
