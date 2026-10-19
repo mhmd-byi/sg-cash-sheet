@@ -4,13 +4,15 @@ import { StatusBadge } from '@/app/(app)/status-badge'
 import { KeyNoteEditor } from '@/app/(app)/key-note-editor'
 import type { StockSheetDetail } from '@/lib/stock-sheets'
 
-function DiffCell({ actual, expected }: { actual: number; expected: number }) {
-  const diff = actual - expected
+function RowHeader({ labels }: { labels: string[] }) {
   return (
-    <span className={diff === 0 ? 'text-muted-foreground' : diff > 0 ? 'text-primary' : 'text-destructive'}>
-      {diff > 0 ? '+' : ''}
-      {diff}
-    </span>
+    <>
+      {labels.map((label) => (
+        <span key={label} className="text-sm font-medium">
+          {label}
+        </span>
+      ))}
+    </>
   )
 }
 
@@ -21,49 +23,55 @@ export function StockSheetView({ date, detail }: { date: string; detail: StockSh
 
       <KeyNoteEditor date={date} kind="stock" initialValue={detail.keyNote} />
 
+      <div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Opening Stock</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {detail.items.map((item, i) => (
+              <div key={item.itemId} className="grid grid-cols-[1fr_5rem_5rem_1fr] items-end gap-2">
+                {i === 0 && <RowHeader labels={['Item', 'Box', 'Pcs', 'Remark']} />}
+                <span className="flex items-center text-sm">{item.itemName}</span>
+                <span className="flex items-center text-sm">{item.openingBox}</span>
+                <span className="flex items-center text-sm">{item.openingPcs}</span>
+                <span className="flex items-center truncate text-sm text-muted-foreground">{item.openingRemark || '—'}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Closing Stock</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {detail.items.map((item, i) => (
+              <div key={item.itemId} className="grid grid-cols-[1fr_5rem_5rem_1fr] items-end gap-2">
+                {i === 0 && <RowHeader labels={['Item', 'Box', 'Pcs', 'Remark']} />}
+                <span className="flex items-center text-sm">{item.itemName}</span>
+                <ClosingCell actual={item.closingBox} expected={item.expectedClosingBox} />
+                <ClosingCell actual={item.closingPcs} expected={item.expectedClosingPcs} />
+                <span className="flex items-center truncate text-sm text-muted-foreground">{item.closingRemark || '—'}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Stock Counts</CardTitle>
+          <CardTitle>Display Items</CardTitle>
         </CardHeader>
-        <CardContent>
-          {detail.items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No stock items configured.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Opening Box</TableHead>
-                  <TableHead>Opening Pcs</TableHead>
-                  <TableHead>Closing Box</TableHead>
-                  <TableHead>Closing Pcs</TableHead>
-                  <TableHead>Expected Box</TableHead>
-                  <TableHead>Expected Pcs</TableHead>
-                  <TableHead>Diff Box</TableHead>
-                  <TableHead>Diff Pcs</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {detail.items.map((item) => (
-                  <TableRow key={item.itemId}>
-                    <TableCell>{item.itemName}</TableCell>
-                    <TableCell>{item.openingBox}</TableCell>
-                    <TableCell>{item.openingPcs}</TableCell>
-                    <TableCell>{item.closingBox}</TableCell>
-                    <TableCell>{item.closingPcs}</TableCell>
-                    <TableCell>{item.expectedClosingBox}</TableCell>
-                    <TableCell>{item.expectedClosingPcs}</TableCell>
-                    <TableCell>
-                      <DiffCell actual={item.closingBox} expected={item.expectedClosingBox} />
-                    </TableCell>
-                    <TableCell>
-                      <DiffCell actual={item.closingPcs} expected={item.expectedClosingPcs} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+        <CardContent className="flex flex-col gap-3">
+          {detail.items.map((item, i) => (
+            <div key={item.itemId} className="grid grid-cols-[1fr_5rem_1fr] items-end gap-2">
+              {i === 0 && <RowHeader labels={['Item', 'Pcs', 'Remark']} />}
+              <span className="flex items-center text-sm">{item.itemName}</span>
+              <span className="flex items-center text-sm">{item.displayPcs}</span>
+              <span className="flex items-center truncate text-sm text-muted-foreground">{item.displayRemark || '—'}</span>
+            </div>
+          ))}
         </CardContent>
       </Card>
 
@@ -108,6 +116,19 @@ export function StockSheetView({ date, detail }: { date: string; detail: StockSh
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function ClosingCell({ actual, expected }: { actual: number; expected: number }) {
+  const diff = actual - expected
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="flex items-center text-sm">{actual}</span>
+      <span className={`text-xs ${diff === 0 ? 'text-muted-foreground' : diff > 0 ? 'text-primary' : 'text-destructive'}`}>
+        expected {expected}
+        {diff !== 0 && ` (${diff > 0 ? '+' : ''}${diff})`}
+      </span>
     </div>
   )
 }
