@@ -4,6 +4,16 @@ import { StatusBadge } from '@/app/(app)/status-badge'
 import { KeyNoteEditor } from '@/app/(app)/key-note-editor'
 import type { StockSheetDetail } from '@/lib/stock-sheets'
 
+function DiffCell({ actual, expected }: { actual: number; expected: number }) {
+  const diff = actual - expected
+  return (
+    <span className={diff === 0 ? 'text-muted-foreground' : diff > 0 ? 'text-primary' : 'text-destructive'}>
+      {diff > 0 ? '+' : ''}
+      {diff}
+    </span>
+  )
+}
+
 export function StockSheetView({ date, detail }: { date: string; detail: StockSheetDetail }) {
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -29,6 +39,8 @@ export function StockSheetView({ date, detail }: { date: string; detail: StockSh
                   <TableHead>Closing Pcs</TableHead>
                   <TableHead>Expected Box</TableHead>
                   <TableHead>Expected Pcs</TableHead>
+                  <TableHead>Diff Box</TableHead>
+                  <TableHead>Diff Pcs</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -41,6 +53,12 @@ export function StockSheetView({ date, detail }: { date: string; detail: StockSh
                     <TableCell>{item.closingPcs}</TableCell>
                     <TableCell>{item.expectedClosingBox}</TableCell>
                     <TableCell>{item.expectedClosingPcs}</TableCell>
+                    <TableCell>
+                      <DiffCell actual={item.closingBox} expected={item.expectedClosingBox} />
+                    </TableCell>
+                    <TableCell>
+                      <DiffCell actual={item.closingPcs} expected={item.expectedClosingPcs} />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

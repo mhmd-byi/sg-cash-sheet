@@ -185,18 +185,36 @@ export function StockSheetForm({
                   </>
                 )}
                 <span className="flex items-center text-sm">{item.itemName}</span>
-                <div className="flex flex-col gap-0.5">
-                  <form.Field name={`items[${i}].closingBox`}>
-                    {(field) => <NumberFieldInput value={field.state.value} onChange={field.handleChange} />}
-                  </form.Field>
-                  <span className="text-xs text-muted-foreground">expected {expectedBoxByItemId.get(item.itemId) ?? 0}</span>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <form.Field name={`items[${i}].closingPcs`}>
-                    {(field) => <NumberFieldInput value={field.state.value} onChange={field.handleChange} />}
-                  </form.Field>
-                  <span className="text-xs text-muted-foreground">expected {expectedPcsByItemId.get(item.itemId) ?? 0}</span>
-                </div>
+                <form.Field name={`items[${i}].closingBox`}>
+                  {(field) => {
+                    const expected = expectedBoxByItemId.get(item.itemId) ?? 0
+                    const diff = (field.state.value || 0) - expected
+                    return (
+                      <div className="flex flex-col gap-0.5">
+                        <NumberFieldInput value={field.state.value} onChange={field.handleChange} />
+                        <span className={`text-xs ${diff === 0 ? 'text-muted-foreground' : diff > 0 ? 'text-primary' : 'text-destructive'}`}>
+                          expected {expected}
+                          {diff !== 0 && ` (${diff > 0 ? '+' : ''}${diff})`}
+                        </span>
+                      </div>
+                    )
+                  }}
+                </form.Field>
+                <form.Field name={`items[${i}].closingPcs`}>
+                  {(field) => {
+                    const expected = expectedPcsByItemId.get(item.itemId) ?? 0
+                    const diff = (field.state.value || 0) - expected
+                    return (
+                      <div className="flex flex-col gap-0.5">
+                        <NumberFieldInput value={field.state.value} onChange={field.handleChange} />
+                        <span className={`text-xs ${diff === 0 ? 'text-muted-foreground' : diff > 0 ? 'text-primary' : 'text-destructive'}`}>
+                          expected {expected}
+                          {diff !== 0 && ` (${diff > 0 ? '+' : ''}${diff})`}
+                        </span>
+                      </div>
+                    )
+                  }}
+                </form.Field>
                 <form.Field name={`items[${i}].closingRemark`}>
                   {(field) => (
                     <Input value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} />
