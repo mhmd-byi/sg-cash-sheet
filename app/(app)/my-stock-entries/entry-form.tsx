@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useForm } from '@tanstack/react-form'
@@ -43,6 +43,14 @@ export function EntryForm({
 }) {
   const router = useRouter()
   const particularsRef = useRef<HTMLInputElement>(null)
+  const typeRefs = useRef<Record<number, HTMLSelectElement | null>>({})
+  const [focusRowIndex, setFocusRowIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (focusRowIndex === null) return
+    typeRefs.current[focusRowIndex]?.focus()
+    setFocusRowIndex(null)
+  }, [focusRowIndex])
 
   const form = useForm({
     defaultValues: {
@@ -101,130 +109,134 @@ export function EntryForm({
       </form.Field>
 
       <form.Field name="entries" mode="array">
-        {(field) => (
-          <div
-            className="flex flex-col gap-3"
-            onKeyDown={(e) => {
-              const isAddRowShortcut =
-                (e.altKey && e.key === 'Enter') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter')
-              if (isAddRowShortcut) {
-                e.preventDefault()
-                e.stopPropagation()
-                field.pushValue(emptyEntry())
-              }
-            }}
-          >
-            <div className="flex flex-col gap-2">
-              {field.state.value.map((_, i) => (
-                <div
-                  key={i}
-                  className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[7rem_9rem_1fr_5rem_5rem_1fr_auto]"
-                >
-                  <form.Field name={`entries[${i}].type`}>
-                    {(subField) => (
-                      <Field>
-                        {i === 0 && <FieldLabel>Type</FieldLabel>}
-                        <select
-                          className={selectClassName}
-                          value={subField.state.value}
-                          onChange={(e) => subField.handleChange(e.target.value as 'receive' | 'issue')}
-                        >
-                          <option value="receive">Receive</option>
-                          <option value="issue">Issue</option>
-                        </select>
-                      </Field>
-                    )}
-                  </form.Field>
-                  <form.Field name={`entries[${i}].itemId`}>
-                    {(subField) => (
-                      <Field>
-                        {i === 0 && <FieldLabel>Item</FieldLabel>}
-                        <select
-                          className={selectClassName}
-                          value={subField.state.value}
-                          onChange={(e) => subField.handleChange(e.target.value)}
-                        >
-                          <option value="" disabled>
-                            Select an item
-                          </option>
-                          {items.map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {item.name}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                    )}
-                  </form.Field>
-                  <form.Field name={`entries[${i}].particulars`}>
-                    {(subField) => (
-                      <Field>
-                        {i === 0 && <FieldLabel>Particulars</FieldLabel>}
-                        <Input
-                          ref={i === 0 ? particularsRef : undefined}
-                          list="particular-suggestions"
-                          autoFocus={i === 0}
-                          value={subField.state.value}
-                          onChange={(e) => subField.handleChange(e.target.value)}
-                        />
-                      </Field>
-                    )}
-                  </form.Field>
-                  <form.Field name={`entries[${i}].qty`}>
-                    {(subField) => (
-                      <Field>
-                        {i === 0 && <FieldLabel>Qty</FieldLabel>}
-                        <NumberFieldInput value={subField.state.value} onChange={subField.handleChange} />
-                      </Field>
-                    )}
-                  </form.Field>
-                  <form.Field name={`entries[${i}].unit`}>
-                    {(subField) => (
-                      <Field>
-                        {i === 0 && <FieldLabel>Unit</FieldLabel>}
-                        <select
-                          className={selectClassName}
-                          value={subField.state.value}
-                          onChange={(e) => subField.handleChange(e.target.value as 'box' | 'pcs' | 'grams')}
-                        >
-                          <option value="pcs">Pcs</option>
-                          <option value="box">Box</option>
-                          <option value="grams">Grams</option>
-                        </select>
-                      </Field>
-                    )}
-                  </form.Field>
-                  <form.Field name={`entries[${i}].remark`}>
-                    {(subField) => (
-                      <Field>
-                        {i === 0 && <FieldLabel>Remark</FieldLabel>}
-                        <Input value={subField.state.value} onChange={(e) => subField.handleChange(e.target.value)} />
-                      </Field>
-                    )}
-                  </form.Field>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => field.removeValue(i)}
-                    disabled={field.state.value.length === 1}
-                  >
-                    <X />
-                  </Button>
-                </div>
-              ))}
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => field.pushValue(emptyEntry())}
-              className="self-start"
+        {(field) => {
+          function addRow() {
+            setFocusRowIndex(field.state.value.length)
+            field.pushValue(emptyEntry())
+          }
+
+          return (
+            <div
+              className="flex flex-col gap-3"
+              onKeyDown={(e) => {
+                const isAddRowShortcut =
+                  (e.altKey && e.key === 'Enter') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter')
+                if (isAddRowShortcut) {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  addRow()
+                }
+              }}
             >
-              Add row
-            </Button>
-          </div>
-        )}
+              <div className="flex flex-col gap-2">
+                {field.state.value.map((_, i) => (
+                  <div
+                    key={i}
+                    className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[7rem_9rem_1fr_5rem_5rem_1fr_auto]"
+                  >
+                    <form.Field name={`entries[${i}].type`}>
+                      {(subField) => (
+                        <Field>
+                          {i === 0 && <FieldLabel>Type</FieldLabel>}
+                          <select
+                            ref={(el) => {
+                              typeRefs.current[i] = el
+                            }}
+                            className={selectClassName}
+                            value={subField.state.value}
+                            onChange={(e) => subField.handleChange(e.target.value as 'receive' | 'issue')}
+                          >
+                            <option value="receive">Receive</option>
+                            <option value="issue">Issue</option>
+                          </select>
+                        </Field>
+                      )}
+                    </form.Field>
+                    <form.Field name={`entries[${i}].itemId`}>
+                      {(subField) => (
+                        <Field>
+                          {i === 0 && <FieldLabel>Item</FieldLabel>}
+                          <select
+                            className={selectClassName}
+                            value={subField.state.value}
+                            onChange={(e) => subField.handleChange(e.target.value)}
+                          >
+                            <option value="" disabled>
+                              Select an item
+                            </option>
+                            {items.map((item) => (
+                              <option key={item.id} value={item.id}>
+                                {item.name}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                      )}
+                    </form.Field>
+                    <form.Field name={`entries[${i}].particulars`}>
+                      {(subField) => (
+                        <Field>
+                          {i === 0 && <FieldLabel>Particulars</FieldLabel>}
+                          <Input
+                            ref={i === 0 ? particularsRef : undefined}
+                            list="particular-suggestions"
+                            autoFocus={i === 0}
+                            value={subField.state.value}
+                            onChange={(e) => subField.handleChange(e.target.value)}
+                          />
+                        </Field>
+                      )}
+                    </form.Field>
+                    <form.Field name={`entries[${i}].qty`}>
+                      {(subField) => (
+                        <Field>
+                          {i === 0 && <FieldLabel>Qty</FieldLabel>}
+                          <NumberFieldInput value={subField.state.value} onChange={subField.handleChange} />
+                        </Field>
+                      )}
+                    </form.Field>
+                    <form.Field name={`entries[${i}].unit`}>
+                      {(subField) => (
+                        <Field>
+                          {i === 0 && <FieldLabel>Unit</FieldLabel>}
+                          <select
+                            className={selectClassName}
+                            value={subField.state.value}
+                            onChange={(e) => subField.handleChange(e.target.value as 'box' | 'pcs' | 'grams')}
+                          >
+                            <option value="pcs">Pcs</option>
+                            <option value="box">Box</option>
+                            <option value="grams">Grams</option>
+                          </select>
+                        </Field>
+                      )}
+                    </form.Field>
+                    <form.Field name={`entries[${i}].remark`}>
+                      {(subField) => (
+                        <Field>
+                          {i === 0 && <FieldLabel>Remark</FieldLabel>}
+                          <Input value={subField.state.value} onChange={(e) => subField.handleChange(e.target.value)} />
+                        </Field>
+                      )}
+                    </form.Field>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => field.removeValue(i)}
+                      disabled={field.state.value.length === 1}
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addRow} className="self-start">
+                Add row
+              </Button>
+            </div>
+          )
+        }}
       </form.Field>
 
       <p className="text-xs text-muted-foreground">

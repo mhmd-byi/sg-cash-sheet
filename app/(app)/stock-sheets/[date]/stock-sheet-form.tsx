@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useForm } from '@tanstack/react-form'
@@ -59,6 +60,15 @@ export function StockSheetForm({
   particularSuggestions: string[]
 }) {
   const router = useRouter()
+  const typeRefs = useRef<Record<number, HTMLSelectElement | null>>({})
+  const [focusRowIndex, setFocusRowIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (focusRowIndex === null) return
+    typeRefs.current[focusRowIndex]?.focus()
+    setFocusRowIndex(null)
+  }, [focusRowIndex])
+
   const itemOptions = detail.items.map((item) => ({ id: item.itemId, name: item.itemName }))
   const expectedPcsByItemId = new Map(detail.items.map((item) => [item.itemId, item.expectedClosingPcs]))
   const expectedBoxByItemId = new Map(detail.items.map((item) => [item.itemId, item.expectedClosingBox]))
@@ -258,7 +268,13 @@ export function StockSheetForm({
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <form.Field name="transfers" mode="array">
-            {(field) => (
+            {(field) => {
+              function addRow() {
+                setFocusRowIndex(field.state.value.length)
+                field.pushValue(emptyTransfer())
+              }
+
+              return (
               <div
                 className="contents"
                 onKeyDown={(e) => {
@@ -267,7 +283,7 @@ export function StockSheetForm({
                   if (isAddRowShortcut) {
                     e.preventDefault()
                     e.stopPropagation()
-                    field.pushValue(emptyTransfer())
+                    addRow()
                   }
                 }}
               >
@@ -278,6 +294,9 @@ export function StockSheetForm({
                         <Field>
                           {i === 0 && <FieldLabel>Type</FieldLabel>}
                           <select
+                            ref={(el) => {
+                              typeRefs.current[i] = el
+                            }}
                             className={selectClassName}
                             value={subField.state.value}
                             onChange={(e) => subField.handleChange(e.target.value as 'receive' | 'issue')}
@@ -364,17 +383,12 @@ export function StockSheetForm({
                     </Button>
                   </div>
                 ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => field.pushValue(emptyTransfer())}
-                  className="self-start"
-                >
+                <Button type="button" variant="outline" size="sm" onClick={addRow} className="self-start">
                   Add row
                 </Button>
               </div>
-            )}
+              )
+            }}
           </form.Field>
         </CardContent>
       </Card>

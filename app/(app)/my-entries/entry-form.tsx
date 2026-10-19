@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useForm } from '@tanstack/react-form'
@@ -34,6 +34,14 @@ function emptyEntry(): EntryRow {
 export function EntryForm({ particularSuggestions }: { particularSuggestions: string[] }) {
   const router = useRouter()
   const particularRef = useRef<HTMLInputElement>(null)
+  const typeRefs = useRef<Record<number, HTMLSelectElement | null>>({})
+  const [focusRowIndex, setFocusRowIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (focusRowIndex === null) return
+    typeRefs.current[focusRowIndex]?.focus()
+    setFocusRowIndex(null)
+  }, [focusRowIndex])
 
   const form = useForm({
     defaultValues: {
@@ -92,90 +100,94 @@ export function EntryForm({ particularSuggestions }: { particularSuggestions: st
       </form.Field>
 
       <form.Field name="entries" mode="array">
-        {(field) => (
-          <div
-            className="flex flex-col gap-3"
-            onKeyDown={(e) => {
-              const isAddRowShortcut =
-                (e.altKey && e.key === 'Enter') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter')
-              if (isAddRowShortcut) {
-                e.preventDefault()
-                e.stopPropagation()
-                field.pushValue(emptyEntry())
-              }
-            }}
-          >
-            <div className="flex flex-col gap-2">
-              {field.state.value.map((_, i) => (
-                <div key={i} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[8rem_1fr_8rem_1fr_auto]">
-                  <form.Field name={`entries[${i}].type`}>
-                    {(subField) => (
-                      <Field>
-                        {i === 0 && <FieldLabel>Type</FieldLabel>}
-                        <select
-                          className={selectClassName}
-                          value={subField.state.value}
-                          onChange={(e) => subField.handleChange(e.target.value as 'receipt' | 'payment')}
-                        >
-                          <option value="receipt">Receipt</option>
-                          <option value="payment">Payment</option>
-                        </select>
-                      </Field>
-                    )}
-                  </form.Field>
-                  <form.Field name={`entries[${i}].particular`}>
-                    {(subField) => (
-                      <Field>
-                        {i === 0 && <FieldLabel>Particular</FieldLabel>}
-                        <Input
-                          ref={i === 0 ? particularRef : undefined}
-                          list="particular-suggestions"
-                          autoFocus={i === 0}
-                          value={subField.state.value}
-                          onChange={(e) => subField.handleChange(e.target.value)}
-                        />
-                      </Field>
-                    )}
-                  </form.Field>
-                  <form.Field name={`entries[${i}].amount`}>
-                    {(subField) => (
-                      <Field>
-                        {i === 0 && <FieldLabel>Amount (₹)</FieldLabel>}
-                        <NumberFieldInput step="0.01" value={subField.state.value} onChange={subField.handleChange} />
-                      </Field>
-                    )}
-                  </form.Field>
-                  <form.Field name={`entries[${i}].remark`}>
-                    {(subField) => (
-                      <Field>
-                        {i === 0 && <FieldLabel>Remark</FieldLabel>}
-                        <Input value={subField.state.value} onChange={(e) => subField.handleChange(e.target.value)} />
-                      </Field>
-                    )}
-                  </form.Field>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => field.removeValue(i)}
-                    disabled={field.state.value.length === 1}
-                  >
-                    <X />
-                  </Button>
-                </div>
-              ))}
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => field.pushValue(emptyEntry())}
-              className="self-start"
+        {(field) => {
+          function addRow() {
+            setFocusRowIndex(field.state.value.length)
+            field.pushValue(emptyEntry())
+          }
+
+          return (
+            <div
+              className="flex flex-col gap-3"
+              onKeyDown={(e) => {
+                const isAddRowShortcut =
+                  (e.altKey && e.key === 'Enter') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter')
+                if (isAddRowShortcut) {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  addRow()
+                }
+              }}
             >
-              Add row
-            </Button>
-          </div>
-        )}
+              <div className="flex flex-col gap-2">
+                {field.state.value.map((_, i) => (
+                  <div key={i} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[8rem_1fr_8rem_1fr_auto]">
+                    <form.Field name={`entries[${i}].type`}>
+                      {(subField) => (
+                        <Field>
+                          {i === 0 && <FieldLabel>Type</FieldLabel>}
+                          <select
+                            ref={(el) => {
+                              typeRefs.current[i] = el
+                            }}
+                            className={selectClassName}
+                            value={subField.state.value}
+                            onChange={(e) => subField.handleChange(e.target.value as 'receipt' | 'payment')}
+                          >
+                            <option value="receipt">Receipt</option>
+                            <option value="payment">Payment</option>
+                          </select>
+                        </Field>
+                      )}
+                    </form.Field>
+                    <form.Field name={`entries[${i}].particular`}>
+                      {(subField) => (
+                        <Field>
+                          {i === 0 && <FieldLabel>Particular</FieldLabel>}
+                          <Input
+                            ref={i === 0 ? particularRef : undefined}
+                            list="particular-suggestions"
+                            autoFocus={i === 0}
+                            value={subField.state.value}
+                            onChange={(e) => subField.handleChange(e.target.value)}
+                          />
+                        </Field>
+                      )}
+                    </form.Field>
+                    <form.Field name={`entries[${i}].amount`}>
+                      {(subField) => (
+                        <Field>
+                          {i === 0 && <FieldLabel>Amount (₹)</FieldLabel>}
+                          <NumberFieldInput step="0.01" value={subField.state.value} onChange={subField.handleChange} />
+                        </Field>
+                      )}
+                    </form.Field>
+                    <form.Field name={`entries[${i}].remark`}>
+                      {(subField) => (
+                        <Field>
+                          {i === 0 && <FieldLabel>Remark</FieldLabel>}
+                          <Input value={subField.state.value} onChange={(e) => subField.handleChange(e.target.value)} />
+                        </Field>
+                      )}
+                    </form.Field>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => field.removeValue(i)}
+                      disabled={field.state.value.length === 1}
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addRow} className="self-start">
+                Add row
+              </Button>
+            </div>
+          )
+        }}
       </form.Field>
 
       <p className="text-xs text-muted-foreground">
