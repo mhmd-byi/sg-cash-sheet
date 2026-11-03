@@ -8,15 +8,14 @@ import { X } from 'lucide-react'
 import { addEntries } from './actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { NumberFieldInput } from '@/app/(app)/number-field-input'
 import { getTodayDateString, getEarliestEntryDateString } from '@/lib/date'
 
-const selectClassName =
-  'h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
+type Section = 'receipts' | 'payments'
 
 interface EntryRow {
-  type: 'receipt' | 'payment'
   particular: string
   amount: number
   remark: string
@@ -24,42 +23,132 @@ interface EntryRow {
 
 interface EntriesFormValues {
   date: string
-  entries: EntryRow[]
+  receipts: EntryRow[]
+  payments: EntryRow[]
 }
 
 function emptyEntry(): EntryRow {
-  return { type: 'receipt', particular: '', amount: 0, remark: '' }
+  return { particular: '', amount: 0, remark: '' }
 }
 
 export function EntryForm({ particularSuggestions }: { particularSuggestions: string[] }) {
   const router = useRouter()
-  const particularRef = useRef<HTMLInputElement>(null)
-  const typeRefs = useRef<Record<number, HTMLSelectElement | null>>({})
-  const [focusRowIndex, setFocusRowIndex] = useState<number | null>(null)
+  const particularRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const [focusTarget, setFocusTarget] = useState<{ section: Section; index: number } | null>(null)
 
   useEffect(() => {
-    if (focusRowIndex === null) return
-    typeRefs.current[focusRowIndex]?.focus()
-    setFocusRowIndex(null)
-  }, [focusRowIndex])
+    if (focusTarget === null) return
+    particularRefs.current[`${focusTarget.section}-${focusTarget.index}`]?.focus()
+    setFocusTarget(null)
+  }, [focusTarget])
 
   const form = useForm({
     defaultValues: {
       date: getTodayDateString(),
-      entries: [emptyEntry()],
+      receipts: [emptyEntry()],
+      payments: [emptyEntry()],
     } as EntriesFormValues,
     onSubmit: async ({ value, formApi }) => {
-      const result = await addEntries(value)
+      const entries = [
+        ...value.receipts.map((row) => ({ type: 'receipt' as const, ...row })),
+        ...value.payments.map((row) => ({ type: 'payment' as const, ...row })),
+      ]
+      const result = await addEntries({ date: value.date, entries })
       if (result.success) {
         toast.success('Entries added.')
-        formApi.setFieldValue('entries', [emptyEntry()])
-        particularRef.current?.focus()
+        formApi.setFieldValue('receipts', [emptyEntry()])
+        formApi.setFieldValue('payments', [emptyEntry()])
+        particularRefs.current['receipts-0']?.focus()
         router.refresh()
       } else {
         toast.error(result.error ?? 'Failed to add entries.')
       }
     },
   })
+
+  function renderSection(name: Section, title: string) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <form.Field name={name} mode="array">
+            {(field) => {
+              function addRow() {
+                setFocusTarget({ section: name, index: field.state.value.length })
+                field.pushValue(emptyEntry())
+              }
+
+              return (
+                <div
+                  className="contents"
+                  onKeyDown={(e) => {
+                    const isAddRowShortcut =
+                      (e.altKey && e.key === 'Enter') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter')
+                    if (isAddRowShortcut) {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      addRow()
+                    }
+                  }}
+                >
+                  {field.state.value.map((_, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_7rem_1fr_auto] items-end gap-2">
+                      <form.Field name={`${name}[${i}].particular`}>
+                        {(subField) => (
+                          <Field>
+                            {i === 0 && <FieldLabel>Particular</FieldLabel>}
+                            <Input
+                              ref={(el) => {
+                                particularRefs.current[`${name}-${i}`] = el
+                              }}
+                              list="particular-suggestions"
+                              autoFocus={name === 'receipts' && i === 0}
+                              value={subField.state.value}
+                              onChange={(e) => subField.handleChange(e.target.value)}
+                            />
+                          </Field>
+                        )}
+                      </form.Field>
+                      <form.Field name={`${name}[${i}].amount`}>
+                        {(subField) => (
+                          <Field>
+                            {i === 0 && <FieldLabel>Amount (₹)</FieldLabel>}
+                            <NumberFieldInput step="0.01" value={subField.state.value} onChange={subField.handleChange} />
+                          </Field>
+                        )}
+                      </form.Field>
+                      <form.Field name={`${name}[${i}].remark`}>
+                        {(subField) => (
+                          <Field>
+                            {i === 0 && <FieldLabel>Remark</FieldLabel>}
+                            <Input value={subField.state.value} onChange={(e) => subField.handleChange(e.target.value)} />
+                          </Field>
+                        )}
+                      </form.Field>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => field.removeValue(i)}
+                        disabled={field.state.value.length === 1}
+                      >
+                        <X />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" size="sm" onClick={addRow} className="self-start">
+                    Add row
+                  </Button>
+                </div>
+              )
+            }}
+          </form.Field>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <form
@@ -99,100 +188,14 @@ export function EntryForm({ particularSuggestions }: { particularSuggestions: st
         )}
       </form.Field>
 
-      <form.Field name="entries" mode="array">
-        {(field) => {
-          function addRow() {
-            setFocusRowIndex(field.state.value.length)
-            field.pushValue(emptyEntry())
-          }
-
-          return (
-            <div
-              className="flex flex-col gap-3"
-              onKeyDown={(e) => {
-                const isAddRowShortcut =
-                  (e.altKey && e.key === 'Enter') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter')
-                if (isAddRowShortcut) {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  addRow()
-                }
-              }}
-            >
-              <div className="flex flex-col gap-2">
-                {field.state.value.map((_, i) => (
-                  <div key={i} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[8rem_1fr_8rem_1fr_auto]">
-                    <form.Field name={`entries[${i}].type`}>
-                      {(subField) => (
-                        <Field>
-                          {i === 0 && <FieldLabel>Type</FieldLabel>}
-                          <select
-                            ref={(el) => {
-                              typeRefs.current[i] = el
-                            }}
-                            className={selectClassName}
-                            value={subField.state.value}
-                            onChange={(e) => subField.handleChange(e.target.value as 'receipt' | 'payment')}
-                          >
-                            <option value="receipt">Receipt</option>
-                            <option value="payment">Payment</option>
-                          </select>
-                        </Field>
-                      )}
-                    </form.Field>
-                    <form.Field name={`entries[${i}].particular`}>
-                      {(subField) => (
-                        <Field>
-                          {i === 0 && <FieldLabel>Particular</FieldLabel>}
-                          <Input
-                            ref={i === 0 ? particularRef : undefined}
-                            list="particular-suggestions"
-                            autoFocus={i === 0}
-                            value={subField.state.value}
-                            onChange={(e) => subField.handleChange(e.target.value)}
-                          />
-                        </Field>
-                      )}
-                    </form.Field>
-                    <form.Field name={`entries[${i}].amount`}>
-                      {(subField) => (
-                        <Field>
-                          {i === 0 && <FieldLabel>Amount (₹)</FieldLabel>}
-                          <NumberFieldInput step="0.01" value={subField.state.value} onChange={subField.handleChange} />
-                        </Field>
-                      )}
-                    </form.Field>
-                    <form.Field name={`entries[${i}].remark`}>
-                      {(subField) => (
-                        <Field>
-                          {i === 0 && <FieldLabel>Remark</FieldLabel>}
-                          <Input value={subField.state.value} onChange={(e) => subField.handleChange(e.target.value)} />
-                        </Field>
-                      )}
-                    </form.Field>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => field.removeValue(i)}
-                      disabled={field.state.value.length === 1}
-                    >
-                      <X />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <Button type="button" variant="outline" size="sm" onClick={addRow} className="self-start">
-                Add row
-              </Button>
-            </div>
-          )
-        }}
-      </form.Field>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {renderSection('receipts', 'Receipts')}
+        {renderSection('payments', 'Payments')}
+      </div>
 
       <p className="text-xs text-muted-foreground">
         You can log entries for today or up to 7 days back. Ctrl+Enter saves all rows; Ctrl+Shift+Enter (or Alt+Enter)
-        adds a row.
+        adds a row to the section you&apos;re in.
       </p>
 
       <form.Subscribe selector={(state) => state.isSubmitting}>
