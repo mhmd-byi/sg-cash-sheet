@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getMyEntries, getDistinctParticulars } from '@/lib/cash-sheets'
+import { getMyEntries, getDistinctParticulars, getCashSheetFigures } from '@/lib/cash-sheets'
 import { parsePage, parsePageSize } from '@/lib/pagination'
 import { getTodayDateString } from '@/lib/date'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -17,9 +17,10 @@ export default async function MyEntriesPage({
   const { page: pageParam, pageSize: pageSizeParam } = await searchParams
   const page = parsePage(pageParam)
   const pageSize = parsePageSize(pageSizeParam)
-  const [{ rows: entries, totalPages }, particularSuggestions] = await Promise.all([
+  const [{ rows: entries, totalPages }, particularSuggestions, todaysFigures] = await Promise.all([
     getMyEntries(page, pageSize),
     getDistinctParticulars(),
+    getCashSheetFigures(getTodayDateString()),
   ])
 
   return (
@@ -38,7 +39,7 @@ export default async function MyEntriesPage({
           <CardTitle>Add entries</CardTitle>
         </CardHeader>
         <CardContent>
-          <EntryForm particularSuggestions={particularSuggestions} />
+          <EntryForm particularSuggestions={particularSuggestions} initialFigures={todaysFigures} />
         </CardContent>
       </Card>
       <EntriesTable data={entries} />

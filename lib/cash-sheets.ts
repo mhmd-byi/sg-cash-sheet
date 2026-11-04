@@ -292,7 +292,20 @@ export interface AddMyEntryRowInput {
   remark: string
 }
 
-export interface AddMyEntriesInput {
+export interface CashSheetFigures {
+  openingBalance: number
+  cashInHand: number | null
+}
+
+export async function getCashSheetFigures(date: string): Promise<CashSheetFigures> {
+  await verifySession()
+  await connectDB()
+
+  const sheet = await CashSheet.findOne({ date }).select('openingBalance actualClosingCash').lean()
+  return { openingBalance: sheet?.openingBalance ?? 0, cashInHand: sheet?.actualClosingCash ?? null }
+}
+
+export interface AddMyEntriesInput extends CashSheetFigures {
   date: string
   entries: AddMyEntryRowInput[]
 }
@@ -306,6 +319,8 @@ export async function addMyEntries(input: AddMyEntriesInput) {
 
   const actingUser = await User.findById(session.userId).select('role')
   const status = actingUser?.role === 'admin' ? 'approved' : 'pending'
+  // Checkers only ever see these figures read-only.
+  const canEditFigures = actingUser?.role !== 'checker'
 
   const toRow = (entry: AddMyEntryRowInput): Omit<CashSheetRow, '_id'> => ({
     particular: entry.particular,
@@ -328,9 +343,10 @@ export async function addMyEntries(input: AddMyEntriesInput) {
     { date: input.date },
     {
       ...(Object.keys(pushOps).length > 0 ? { $push: pushOps } : {}),
-      $set: { updatedBy: session.userId },
-      // Opening balance is manual entry only (no carry-forward) - a brand-new sheet created here
-      // just takes the schema's default (0) until admin/maker types in the real figure.
+      $set: {
+        updatedBy: session.userId,
+        ...(canEditFigures ? { openingBalance: input.openingBalance, actualClosingCash: input.cashInHand } : {}),
+      },
       $setOnInsert: { createdBy: session.userId },
     },
     { upsert: true, runValidators: true },

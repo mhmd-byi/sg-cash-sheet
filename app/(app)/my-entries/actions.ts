@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { addMyEntries } from '@/lib/cash-sheets'
+import { addMyEntries, getCashSheetFigures, type CashSheetFigures } from '@/lib/cash-sheets'
 
 const EntryRowSchema = z.object({
   type: z.enum(['receipt', 'payment']),
@@ -13,6 +13,8 @@ const EntryRowSchema = z.object({
 
 const AddEntriesSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date.'),
+  openingBalance: z.coerce.number(),
+  cashInHand: z.number().nullable(),
   entries: z.array(EntryRowSchema),
 })
 
@@ -28,17 +30,26 @@ export async function addEntries(input: unknown): Promise<AddEntriesResult> {
   }
 
   const entries = parsed.data.entries.filter((entry) => entry.particular !== '' && entry.amount > 0)
-  if (entries.length === 0) {
-    return { success: false, error: 'Add at least one entry with a particular and an amount.' }
-  }
 
   try {
-    await addMyEntries({ date: parsed.data.date, entries })
+    await addMyEntries({
+      date: parsed.data.date,
+      openingBalance: parsed.data.openingBalance,
+      cashInHand: parsed.data.cashInHand,
+      entries,
+    })
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Failed to add entries.' }
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to save.' }
   }
 
   revalidatePath('/my-entries')
+  revalidatePath('/approvals')
   revalidatePath('/cash-sheets')
+  revalidatePath(`/cash-sheets/${parsed.data.date}`)
   return { success: true }
+}
+
+export async function getCashFigures(date: string): Promise<CashSheetFigures> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { openingBalance: 0, cashInHand: null }
+  return getCashSheetFigures(date)
 }

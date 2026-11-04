@@ -1,17 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useForm } from '@tanstack/react-form'
 import { X } from 'lucide-react'
-import { addEntries } from './actions'
+import { addEntries, getCashFigures } from './actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { NumberFieldInput } from '@/app/(app)/number-field-input'
 import { getTodayDateString, getEarliestEntryDateString } from '@/lib/date'
+import type { CashSheetFigures } from '@/lib/cash-sheets'
 
 type Section = 'receipts' | 'payments'
 
@@ -23,6 +24,8 @@ interface EntryRow {
 
 interface EntriesFormValues {
   date: string
+  openingBalance: number
+  cashInHand: number | null
   receipts: EntryRow[]
   payments: EntryRow[]
 }
@@ -31,10 +34,17 @@ function emptyEntry(): EntryRow {
   return { particular: '', amount: 0, remark: '' }
 }
 
-export function EntryForm({ particularSuggestions }: { particularSuggestions: string[] }) {
+export function EntryForm({
+  particularSuggestions,
+  initialFigures,
+}: {
+  particularSuggestions: string[]
+  initialFigures: CashSheetFigures
+}) {
   const router = useRouter()
   const particularRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const [focusTarget, setFocusTarget] = useState<{ section: Section; index: number } | null>(null)
+  const [, startTransition] = useTransition()
 
   useEffect(() => {
     if (focusTarget === null) return
@@ -45,6 +55,8 @@ export function EntryForm({ particularSuggestions }: { particularSuggestions: st
   const form = useForm({
     defaultValues: {
       date: getTodayDateString(),
+      openingBalance: initialFigures.openingBalance,
+      cashInHand: initialFigures.cashInHand,
       receipts: [emptyEntry()],
       payments: [emptyEntry()],
     } as EntriesFormValues,
@@ -53,18 +65,33 @@ export function EntryForm({ particularSuggestions }: { particularSuggestions: st
         ...value.receipts.map((row) => ({ type: 'receipt' as const, ...row })),
         ...value.payments.map((row) => ({ type: 'payment' as const, ...row })),
       ]
-      const result = await addEntries({ date: value.date, entries })
+      const result = await addEntries({
+        date: value.date,
+        openingBalance: value.openingBalance,
+        cashInHand: value.cashInHand,
+        entries,
+      })
       if (result.success) {
-        toast.success('Entries added.')
+        toast.success('Saved.')
         formApi.setFieldValue('receipts', [emptyEntry()])
         formApi.setFieldValue('payments', [emptyEntry()])
         particularRefs.current['receipts-0']?.focus()
         router.refresh()
       } else {
-        toast.error(result.error ?? 'Failed to add entries.')
+        toast.error(result.error ?? 'Failed to save.')
       }
     },
   })
+
+  function loadFigures(date: string) {
+    if (!date) return
+    startTransition(async () => {
+      const figures = await getCashFigures(date)
+      if (form.state.values.date !== date) return
+      form.setFieldValue('openingBalance', figures.openingBalance)
+      form.setFieldValue('cashInHand', figures.cashInHand)
+    })
+  }
 
   function renderSection(name: Section, title: string) {
     return (
@@ -171,22 +198,55 @@ export function EntryForm({ particularSuggestions }: { particularSuggestions: st
         ))}
       </datalist>
 
-      <form.Field name="date">
-        {(field) => (
-          <Field className="w-40">
-            <FieldLabel htmlFor="date">Date</FieldLabel>
-            <Input
-              id="date"
-              type="date"
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              min={getEarliestEntryDateString()}
-              max={getTodayDateString()}
-              required
-            />
-          </Field>
-        )}
-      </form.Field>
+      <div className="flex flex-wrap items-end gap-3">
+        <form.Field name="date">
+          {(field) => (
+            <Field className="w-40">
+              <FieldLabel htmlFor="date">Date</FieldLabel>
+              <Input
+                id="date"
+                type="date"
+                value={field.state.value}
+                onChange={(e) => {
+                  field.handleChange(e.target.value)
+                  loadFigures(e.target.value)
+                }}
+                min={getEarliestEntryDateString()}
+                max={getTodayDateString()}
+                required
+              />
+            </Field>
+          )}
+        </form.Field>
+        <form.Field name="openingBalance">
+          {(field) => (
+            <Field className="w-44">
+              <FieldLabel htmlFor="openingBalance">Opening Balance (₹)</FieldLabel>
+              <NumberFieldInput
+                id="openingBalance"
+                step="0.01"
+                value={field.state.value}
+                onChange={field.handleChange}
+              />
+            </Field>
+          )}
+        </form.Field>
+        <form.Field name="cashInHand">
+          {(field) => (
+            <Field className="w-44">
+              <FieldLabel htmlFor="cashInHand">Cash in Hand (₹)</FieldLabel>
+              <Input
+                id="cashInHand"
+                type="number"
+                step="0.01"
+                placeholder="Not counted"
+                value={field.state.value ?? ''}
+                onChange={(e) => field.handleChange(e.target.value === '' ? null : Number(e.target.value))}
+              />
+            </Field>
+          )}
+        </form.Field>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {renderSection('receipts', 'Receipts')}
